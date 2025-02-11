@@ -79,7 +79,6 @@ def main():
         file.write('\n')
         file.write(command)
     
-    print(" ")
     print(f"BATCH: {path_batch_file}")
 
 if __name__ == "__main__":

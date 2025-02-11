@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 # Given a segmentation file calculates the segment copy numbers, saves to a new file.
+# Make sure to run this in the base environment: conda activte base
 
 # /groups/wyattgrp/users/amunzur/toolkit/calculate_CN_segment.py \
 #     --path_segmentation /groups/wyattgrp/users/amunzur/ecdna_project/igv_tracks/OZM-054-018-003-cfDNA-2016Jan13_segments.tsv \
@@ -9,7 +10,6 @@
 #     --ctdna_fraction 0.691 
 
 import sys
-import os
 import pandas as pd
 import argparse
 

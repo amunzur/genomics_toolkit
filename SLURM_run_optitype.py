@@ -67,7 +67,7 @@ def main():
     
     with open(path_batch_file, 'a') as file:
         file.write('#!/bin/bash\n')
-        file.write(f'#SBATCH --job-name=OPI_{sample_name}\n')
+        file.write(f'#SBATCH --job-name=WGS_OPI_{sample_name}\n')
         file.write(f'#SBATCH --cpus-per-task={args.threads}\n')
         file.write(f'#SBATCH --mem={args.memory}\n')
         file.write(f'#SBATCH --time={args.timelimit}\n')
@@ -81,22 +81,34 @@ def main():
         file.write('\n')
         file.write(command)
     
-    print(" ")
     print(f"BATCH: {path_batch_file}")
 
 if __name__ == "__main__":
     main()
 
 # Generate batch scripts for multiple samples at once
-while IFS= read -r line || [[ -n "$line" ]]; do
-    echo "Processing: $line"
-    /groups/wyattgrp/users/amunzur/toolkit/SLURM_run_optitype.py \
-    --dir_fastqs /groups/wyattgrp/users/amunzur/hla_pipeline/results/data/fq/raw \
-    --sample_name ${line} \
-    --dir_output_main /groups/wyattgrp/users/amunzur/hla_pipeline/results/optitype \
-    --dir_batch_scripts /groups/wyattgrp/users/amunzur/hla_pipeline/workflow/batch_scripts/optitype \
-    --dir_logs /groups/wyattgrp/users/amunzur/hla_pipeline/results/logs_slurm/optitype \
-    --threads 16 \
-    --memory 64G \
-    --timelimit 23:00:00
-done < /groups/wyattgrp/users/amunzur/hla_pipeline/resources/sample_list_panel_test_WBC_samples.tsv
+# while IFS= read -r line || [[ -n "$line" ]]; do
+#     echo "Processing: $line"
+#     /groups/wyattgrp/users/amunzur/toolkit/SLURM_run_optitype.py \
+#     --dir_fastqs /groups/wyattgrp/users/amunzur/hla_pipeline/results/data/fq/raw \
+#     --sample_name ${line} \
+#     --dir_output_main /groups/wyattgrp/users/amunzur/hla_pipeline/results/optitype \
+#     --dir_batch_scripts /groups/wyattgrp/users/amunzur/hla_pipeline/workflow/batch_scripts/optitype \
+#     --dir_logs /groups/wyattgrp/users/amunzur/hla_pipeline/results/logs_slurm/optitype \
+#     --threads 16 \
+#     --memory 64G \
+#     --timelimit 23:00:00
+# done < /groups/wyattgrp/users/amunzur/hla_pipeline/resources/sample_list_panel_test_WBC_samples.tsv
+
+
+# for file in /groups/wyattgrp/users/amunzur/hla_pipeline/results/data/bam/bams_without_alt_contigs/alignments/*WBC*WES*.bam; do
+# 	/groups/wyattgrp/users/amunzur/toolkit/SLURM_run_optitype.py \
+# 	--dir_fastqs /groups/wyattgrp/users/amunzur/hla_pipeline/results/data/fq/raw \
+# 	--sample_name $(basename "${file}" .bam) \
+# 	--dir_output_main /groups/wyattgrp/users/amunzur/hla_pipeline/results/optitype \
+# 	--dir_batch_scripts /groups/wyattgrp/users/amunzur/hla_pipeline/workflow/batch_scripts/optitype \
+# 	--dir_logs /groups/wyattgrp/users/amunzur/hla_pipeline/results/logs_slurm/optitype \
+# 	--threads 16 \
+# 	--memory 64G \
+# 	--timelimit 23:00:00
+# done
