@@ -29,6 +29,7 @@ def main():
     parser.add_argument("--threads", required=True, help="Number of threads.")    
     parser.add_argument("--memory", required=True, help="Memory. Provide with suffix, like 8G")    
     parser.add_argument("--timelimit", required=True, help="Timelimit.")    
+    parser.add_argument("--jobname_keyword", required=True, help="jobname_keyword.")    
     
     args = parser.parse_args()
     
@@ -44,7 +45,7 @@ def main():
     
     dir_fastqs=args.dir_fastqs
     path_fastq1=os.path.join(dir_fastqs, f"{sample_name}_1.fq.gz")
-    path_fastq2=os.path.join(dir_fastqs, f"{sample_name}_1.fq.gz")
+    path_fastq2=os.path.join(dir_fastqs, f"{sample_name}_2.fq.gz")
         
     if not os.path.exists(dir_output_sample):
         os.makedirs(dir_output_sample)
@@ -67,7 +68,7 @@ def main():
     
     with open(path_batch_file, 'a') as file:
         file.write('#!/bin/bash\n')
-        file.write(f'#SBATCH --job-name=WGS_OPI_{sample_name}\n')
+        file.write(f'#SBATCH --job-name={args.jobname_keyword}_{sample_name}\n')
         file.write(f'#SBATCH --cpus-per-task={args.threads}\n')
         file.write(f'#SBATCH --mem={args.memory}\n')
         file.write(f'#SBATCH --time={args.timelimit}\n')

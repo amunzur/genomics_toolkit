@@ -184,7 +184,6 @@ if __name__ == "__main__":
 python /groups/wyattgrp/users/amunzur/toolkit/make_OP_show_all_muts.py \
     --path_muts /groups/wyattgrp/users/amunzur/prince_ch/results/variant_calling/CHIP_SSCS2_curated.csv \
     --dir_figures /groups/wyattgrp/users/amunzur/prince_ch/results/figures/patient_profiles \
-    --path_gene_groups 
 """
 
 path_muts="/groups/wyattgrp/users/amunzur/prince_ch/results/variant_calling/CHIP_SSCS2_curated.csv"

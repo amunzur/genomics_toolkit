@@ -86,17 +86,5 @@ if __name__ == "__main__":
 
 
 
-# while IFS= read -r line || [[ -n "$line" ]]; do
-#     echo "Processing: $line"
-#     /groups/wyattgrp/users/amunzur/toolkit/SLURM_run_lilac.py \
-#     --path_wbc_bam "/groups/wyattgrp/users/amunzur/hla_pipeline/results/data/bam/bams_without_alt_contigs/alignments/${line}.bam"  \
-#     --dir_logs /groups/wyattgrp/users/amunzur/hla_pipeline/results/logs_slurm/lilac \
-#     --dir_output_main /groups/wyattgrp/users/amunzur/hla_pipeline/results/lilac \
-#     --dir_batch_scripts /groups/wyattgrp/users/amunzur/hla_pipeline/workflow/batch_scripts/lilac \
-    #   --threads 4 \
-    #   --memory 16G \
-    #   --timelimit 29:00
-# done < /groups/wyattgrp/users/amunzur/hla_pipeline/resources/sample_list_panel_test_WBC_samples.tsv
-
 
 
