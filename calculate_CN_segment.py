@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
 # Given a segmentation file calculates the segment copy numbers, saves to a new file.
-# Make sure to run this in the base environment: conda activte base
+# Make sure to run this in the base environment: conda activate base
+# Per sample diploid levels and ctDNA fractions should be available
 
 # /groups/wyattgrp/users/amunzur/toolkit/calculate_CN_segment.py \
-#     --path_segmentation /groups/wyattgrp/users/amunzur/ecdna_project/igv_tracks/OZM-054-018-003-cfDNA-2016Jan13_segments.tsv \
-#     --path_output /groups/wyattgrp/users/amunzur/ecdna_project/igv_tracks/OZM-054-018-003-cfDNA-2016Jan13_segments_CN.tsv \
+#     --path_segmentation /path/to/ecdna_project/igv_tracks/sample_segments.tsv \
+#     --path_output /groups/wyattgrp/users/amunzur/ecdna_project/igv_tracks/sample_segments_CN.tsv \
 #     --diploid_level -0.707 \
 #     --ctdna_fraction 0.691 
 
