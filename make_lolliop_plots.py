@@ -1,6 +1,3 @@
-"""
-Plots lollipops.
-"""
 
 import pandas as pd
 import numpy as np
@@ -62,7 +59,7 @@ def plot_lollipops(df, ax, mut_color_dict, plot_what):
     ax.tick_params(axis='x', pad=1)
     return(ax, max(mut_length_df))
 
-PATH_baseline_muts = "/groups/wyattgrp/users/amunzur/ironman_ch/results/variant_calling/CHIP_SSCS2_curated.csv"
+PATH_baseline_muts = "/path/to/CHIP_SSCS2_curated.csv"
 PATH_ctdna = None
 
 # LOAD CHIP DATASETS
@@ -207,7 +204,5 @@ legend_ax.tick_params(axis='both', which='both', bottom=False, top=False, left=F
 legend_ax.set_facecolor('none')
 
 gs_outer.tight_layout(fig)
-fig.savefig("/groups/wyattgrp/users/amunzur/ironman_ch/results/figures/baseline_lollipops.png")
-fig.savefig("/groups/wyattgrp/users/amunzur/ironman_ch/results/figures/baseline_lollipops.pdf")
-
-
+fig.savefig("/path/to/results/figures/baseline_lollipops.png")
+fig.savefig("/path/to/results/figures/baseline_lollipops.pdf")
