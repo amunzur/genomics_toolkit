@@ -19,8 +19,8 @@ PATH_output="$2"
 rm "$PATH_output"
 touch "$PATH_output"
 
+# Tab delim
 echo -e "Sample_name\tMean_depth\tMedian_depth" > "$PATH_output"
-
 
 for f in "$DIR_depth"/*.txt; do
     sample_name=$(basename "$f")
