@@ -23,6 +23,7 @@ def calculate_CN(path_segmentation, diploid_level, ctdna_fraction):
 
 def main():
     # Argument parsing
+    # DL and cfDNA fraction must be precomputed.
     parser = argparse.ArgumentParser(description="Calculate raw copy numbers from segmentation file.")
     parser.add_argument("--path_segmentation", required=True, help="Absolute path to the segmentation file")
     parser.add_argument("--path_output", help="Optional, if given saves here.")
