@@ -1,5 +1,42 @@
 #!/home/amunzur/anaconda3/envs/snakemake/bin/python
 
+"""
+Generates a compressed oncoprint figure for visualizing clonal hematopoiesis (CH) mutations 
+in two treatment arms (LuPSMA vs. Cabazitaxel) using patient-matched plasma samples.
+
+This script processes curated mutation data and summarizes CH mutation burden across 
+patients and genes, stratified by treatment arm. It compresses multiple mutation types 
+per patient-gene pair into a single event and visualizes:
+
+- Mutation counts per gene (log-scale)
+- Maximum VAF per patient
+- Mutation type (color-coded) for each gene/patient
+- Custom Y-axis ordering by gene category
+
+Key Features:
+- Accepts a CHIP mutation table with VAF and consequence annotations.
+- Harmonizes and collapses mutation consequences into interpretable categories.
+- Visualizes both total CH burden and specific mutation types per patient.
+- Uses color-coded bars to distinguish mutation types (e.g., missense, frameshift, stopgain).
+- Annotates y-axis by gene group (e.g., DDR vs. epigenetic regulators).
+
+Inputs:
+- `/path/to/CHIP_progression_plasma_curated.csv`: curated CH mutation data
+- `/path/to/gene_groups_op.tsv`: gene groupings for y-axis spacing
+
+Output:
+- Oncoprint figure saved as:
+    - `oncoprint.png`
+    - `oncoprint.pdf`
+
+The script is optimized for comparing CH mutation patterns across two arms of a clinical 
+trial, and can be used to highlight mutational enrichment or differences in VAF distributions.
+
+Dependencies:
+- Requires `UTILITIES_make_OP.py` with custom plotting functions.
+- Designed to run in an environment with matplotlib, seaborn, pandas, numpy. conda activate base will do.
+"""
+
 # Make sure to run in base env
 import os
 import pandas as pd
