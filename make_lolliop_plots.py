@@ -1,3 +1,31 @@
+"""
+Generates domain-based lollipop plots to visualize protein-coding mutations in key CH-associated genes.
+
+This script processes somatic mutation data (typically from clonal hematopoiesis and optionally ctDNA) 
+to plot amino acid changes along the linear structure of selected proteins. Each mutation is plotted 
+as a 'lollipop' at its respective amino acid position, with stem height indicating mutation frequency 
+across patients. Functional domains of each gene are annotated as colored rectangles.
+
+Features:
+- Plots lollipops for CH mutations and (optionally) ctDNA mutations.
+- Annotates protein domains and selected recurrent hotspot mutations.
+- Generates one combined multi-gene figure as PNG and PDF.
+
+Inputs:
+- `CHIP_SSCS2_curated.csv`: CSV with curated baseline CH mutations, including amino acid annotations.
+- `ctDNA` file (optional): Baseline ctDNA mutations, if `PATH_ctdna` is specified.
+- Domain definitions and protein lengths for selected genes are hardcoded.
+
+Outputs:
+- A multi-panel lollipop plot saved as:
+    - `baseline_lollipops.png`
+    - `baseline_lollipops.pdf`
+
+Target genes: DNMT3A, TET2, TP53, PPM1D, ASXL1
+
+This figure can be used to visually assess mutational clustering, domain enrichment, 
+and compare CH vs ctDNA mutational landscapes.
+"""
 
 import pandas as pd
 import numpy as np
