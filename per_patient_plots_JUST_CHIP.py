@@ -1,5 +1,29 @@
 #!/bin/python
 
+"""
+Generates per-patient plots of CH mutations.
+
+For each patient:
+- Plots mutation VAFs by gene
+- Shades gene backgrounds and annotates protein changes
+- Outputs PNG and PDF figures
+
+Good to run this for every cohort I work on.
+
+Inputs:
+- --path_muts: Path to curated mutation list
+- --vafcolname: Column name for VAF values
+- --path_sample_information: Sample metadata with timepoints
+- --dir_figures: Output directory for the figures
+
+Example:
+python per_patient_plots_JUST_CHIP.py \
+    --path_muts CHIP_SSCS2_curated.csv \
+    --vafcolname VAF_n \
+    --path_sample_information sample_information.tsv \
+    --dir_figures ./patient_profiles
+"""
+
 import pandas as pd
 import numpy as np
 import os
