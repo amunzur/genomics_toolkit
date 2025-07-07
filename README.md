@@ -38,6 +38,8 @@ Example usage snippets can be found as comments inside individual scripts.
 - External tools as required: CNVkit, GridSS, AmpliconArchitect, FreeBayes, Mutect2, VarDict, OptiType, LOHHLA, DASH, etc.
 
 ## Repository file tree
+
+```bash
 ├── copy_number
 │   ├── calculate_CN_segment.py
 │   ├── SLURM_generate_pooled_normal.py
@@ -84,4 +86,4 @@ Example usage snippets can be found as comments inside individual scripts.
     ├── utilities_plotting_functions.py
     ├── UTILITIES_therap.py
     └── zoomed_in_gene_cn_plot_cnvkit.py
-
+```
