@@ -4,11 +4,11 @@
 For a given list of samples, generate per sample batch scripts to run AA.
 """
 
-# /groups/wyattgrp/users/amunzur/toolkit/SLURM_run_AA.py \
-    # --dir_batch_scripts /groups/wyattgrp/users/amunzur/ecdna_project/scripts/batch_scripts/gridss \
-    # --path_wbc_bam /groups/wyattgrp/users/amunzur/ecdna_project/alignments/TheraP-284_WBC-2019Aug19.bam \
-    # --path_cfdna_bam /groups/wyattgrp/users/amunzur/ecdna_project/alignments/TheraP-284_cfDNA-2020Jul21.bam \
-    # --dir_logs /groups/wyattgrp/users/amunzur/ecdna_project/logs/gridss \
+# /path/to/toolkit/SLURM_run_AA.py \
+    # --dir_batch_scripts /path/to/ecdna_project/scripts/batch_scripts/gridss \
+    # --path_wbc_bam /path/to/ecdna_project/alignments/TheraP-284_WBC-2019Aug19.bam \
+    # --path_cfdna_bam /path/to/ecdna_project/alignments/TheraP-284_cfDNA-2020Jul21.bam \
+    # --dir_logs /path/to/ecdna_project/logs/gridss \
     # --dir_AA_output \
     # --downsampling_depth \
     # --path_gripss_vcf \
