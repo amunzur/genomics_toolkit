@@ -2,7 +2,13 @@
 # ca snakemake
 
 """
-Runs cnvkit coverage.
+Generates a SLURM batch script to run CNVkit's coverage command on a BAM file.
+
+Inputs:
+- BAM file for a single sample
+- BED file with probe locations (target regions)
+- Output directory for `.cnn` file
+- Directories for batch script and SLURM logs
 """
     
 import os
