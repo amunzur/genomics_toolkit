@@ -251,12 +251,10 @@ def main():
 if __name__ == "__main__":
     main()
 
-# path_muts="/groups/wyattgrp/users/amunzur/prince_ch/results/variant_calling/CHIP_SSCS2_curated.csv"
-
 """
-python /groups/wyattgrp/users/amunzur/toolkit/per_patient_plots_JUST_CHIP.py \
-    --path_muts /groups/wyattgrp/users/amunzur/prince_ch/results/variant_calling/CHIP_SSCS2_curated.csv \
+python /path/to/toolkit/per_patient_plots_JUST_CHIP.py \
+    --path_muts /path/to/results/variant_calling/CHIP_SSCS2_curated.csv \
     --vafcolname VAF_n \
-    --path_sample_information /groups/wyattgrp/users/amunzur/prince_ch/resources/sample_lists/sample_information.tsv \
-    --dir_figures /groups/wyattgrp/users/amunzur/prince_ch/results/figures/patient_profiles
+    --path_sample_information /path/to/resources/sample_lists/sample_information.tsv \
+    --dir_figures /path/to/results/figures/patient_profiles
 """
