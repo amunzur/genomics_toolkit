@@ -36,3 +36,52 @@ Example usage snippets can be found as comments inside individual scripts.
 - Python (>=3.6), with packages: pandas, numpy, matplotlib, seaborn, argparse  
 - R (for variant filtering scripts)  
 - External tools as required: CNVkit, GridSS, AmpliconArchitect, FreeBayes, Mutect2, VarDict, OptiType, LOHHLA, DASH, etc.
+
+## Repository file tree
+├── copy_number
+│   ├── calculate_CN_segment.py
+│   ├── SLURM_generate_pooled_normal.py
+│   ├── SLURM_run_cnvkit_coverage.py
+│   └── SLURM_run_cnvkit_fix.py
+├── define_classes.py
+├── ecDNA
+│   ├── run_amplicon_pipeline.py
+│   ├── SLURM_run_AA.py
+│   └── SLURM_run_gridss.py
+├── hla
+│   ├── compute_background_profile_GC_correction.bash
+│   ├── SLURM_HLA_generate_pooled_normal.py
+│   ├── SLURM_run_DASH.py
+│   ├── SLURM_run_lilac.py
+│   ├── SLURM_run_lohhla.py
+│   └── SLURM_run_optitype.py
+├── metrics
+│   └── compute_average_depth.bash
+├── process_variants_steps
+│   ├── combine_variant_callers_UTILITIES.R
+│   ├── generate_sample_matrix.py
+│   ├── STEP1_filter_variants.R
+│   ├── STEP2_combine_variant_callers.R
+│   ├── STEP3_make_IGV_snapshots_tumor_wbc.py
+│   ├── STEP4_curate_mutations.py
+│   └── UTILITIES.R
+├── README.md
+├── rename_fastq.py
+├── variant_calling
+│   ├── SLURM_run_freebayes.py
+│   ├── SLURM_run_mutect2.py
+│   └── SLURM_run_vardict.py
+└── visualization
+    ├── Make_basic_plots_one_group.py
+    ├── make_lolliop_plots.py
+    ├── make_oncoprint_functions.py
+    ├── make_OP_collapsed.py
+    ├── make_OP_show_all_muts.py
+    ├── per_patient_plots_JUST_CHIP.py
+    ├── plotting_UTILITIES.py
+    ├── SUPP_master_OP.py
+    ├── UTILITIES_make_OP.py
+    ├── utilities_plotting_functions.py
+    ├── UTILITIES_therap.py
+    └── zoomed_in_gene_cn_plot_cnvkit.py
+
