@@ -8,11 +8,11 @@ import sys
 '''
 Given a directory that contains the newly sequenced samples, rename them by matching the barcodes to the sequencing IDs. 
 
-python /groups/wyattgrp/users/amunzur/toolkit/rename_fastq.py \
---input_dir /groups/wyattgrp/users/amunzur/ironman_ch/results/data/fastq/new \
---barcode_sheet /groups/wyattgrp/users/amunzur/ironman_ch/resources/sequencing/sequencing_sheet.csv \
---output_dir /groups/wyattgrp/users/amunzur/ironman_ch/results/data/fastq/raw \
---script_path /groups/wyattgrp/users/amunzur/ironman_ch/workflow/batch_scripts/rename_fastq/rename_dec27_run.bash \
+python /path/to/toolkit/rename_fastq.py \
+--input_dir /path/to/results/data/fastq/new \
+--barcode_sheet /path/to/resources/sequencing/sequencing_sheet.csv \
+--output_dir /path/to/results/data/fastq/raw \
+--script_path /path/to/workflow/batch_scripts/rename_fastq/rename_dec27_run.bash \
 --dry_run
 
 '''
@@ -41,7 +41,8 @@ def get_reverse_compliment(some_fastq):
     Sometimes the barcode includes a portion that is the reverse compliment. Check sample sheet and determine if this is the case. 
     This function identifies the reverse compliment of the second part of the barcode and returns a complete new file name as string.
     '''
-    seq_id = some_fastq.split("_")[3].split("-")[1] # to take reverse compliment of 
+    base_name = os.path.basename(some_fastq)
+    seq_id = base_name.split("_")[3].split("-")[1] # Extract the part you need for reverse complimenting
     id_reverse = seq_id[::-1] # reverse
     mydict = {'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C'} # dict to take the reverse 
     id_reverse_compliment = []
@@ -55,8 +56,9 @@ def get_reverse_compliment(some_fastq):
     id_reverse_compliment = "".join(id_reverse_compliment)
     
     # replace the id in the fastq name with the reverse compliment 
-    some_fastq = some_fastq.replace(seq_id, id_reverse_compliment)	
-    return(some_fastq)
+    base_name_modified = base_name.replace(seq_id, id_reverse_compliment)
+    reverse_compliment_barcode=base_name_modified.split("_")[3]
+    return(reverse_compliment_barcode)
 
 def get_sequencing_id(some_fastq, barcode_sheet, reverse_compliment = False):
     '''
