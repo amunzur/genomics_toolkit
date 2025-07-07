@@ -1,18 +1,32 @@
 #!/home/amunzur/anaconda3/envs/snakemake/bin/python
 
 """
-For a given list of samples, generate per sample batch scripts to run AA.
-"""
+Generates a SLURM batch script to run AmpliconArchitect (AA) on a cfDNA sample using matched WBC as normal.
 
-# /path/to/toolkit/SLURM_run_AA.py \
-    # --dir_batch_scripts /path/to/ecdna_project/scripts/batch_scripts/gridss \
-    # --path_wbc_bam /path/to/ecdna_project/alignments/TheraP-284_WBC-2019Aug19.bam \
-    # --path_cfdna_bam /path/to/ecdna_project/alignments/TheraP-284_cfDNA-2020Jul21.bam \
-    # --dir_logs /path/to/ecdna_project/logs/gridss \
-    # --dir_AA_output \
-    # --downsampling_depth \
-    # --path_gripss_vcf \
-    # --path_segmented_cn \
+Inputs:
+- cfDNA BAM file
+- WBC BAM file
+- GRIPSS VCF (structural variants)
+- Segmented copy number file (with integer copy states)
+- Downsampling depth (e.g. 20 for 20X; use -1 to skip)
+- Output directories for AA results, logs, and batch scripts
+
+Outputs:
+- A SLURM-compatible bash script to run AA and AmpliconClassifier
+- A log file path for SLURM
+- A cfDNA-only subset of the GRIPSS VCF
+
+Usage:
+python SLURM_run_AA.py \
+  --dir_batch_scripts /path/to/scripts \
+  --path_wbc_bam /path/to/WBC.bam \
+  --path_cfdna_bam /path/to/cfDNA.bam \
+  --dir_logs /path/to/logs \
+  --dir_AA_output /path/to/output \
+  --downsampling_depth 20 \
+  --path_gripss_vcf /path/to/gripss.filtered.vcf.gz \
+  --path_segmented_cn /path/to/segmented_copy_number.tsv
+"""
     
 import os
 import sys
