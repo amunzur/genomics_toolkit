@@ -6,8 +6,15 @@ import argparse
 import sys
 
 '''
-Given a directory that contains the newly sequenced samples, rename them by matching the barcodes to the sequencing IDs. 
+Rename FastQ files based on barcode-to-sample ID mapping.
 
+This script:
+- Scans a directory for `.fastq.gz` or `.fq.gz` files.
+- Matches barcodes in filenames to sequencing IDs using a provided barcode sheet.
+- Generates a bash script to rename and move the files to a specified directory.
+- Optionally reverse-complements barcodes or runs in dry-run mode.
+
+Usage:
 python /path/to/toolkit/rename_fastq.py \
 --input_dir /path/to/results/data/fastq/new \
 --barcode_sheet /path/to/resources/sequencing/sequencing_sheet.csv \
