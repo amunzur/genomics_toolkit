@@ -3,7 +3,7 @@ library(argparse)
 parser <- ArgumentParser(description = 'Filter variants')
 
 # Add arguments
-parser$add_argument('--consensus', type = 'character', required = TRUE, help = 'Consensus (e.g. SSCS2)')
+parser$add_argument('--consensus', type = 'character', required = FALSE, help = 'Consensus (e.g. SSCS2)')
 parser$add_argument('--caller', type = 'character', required = TRUE, help = 'Caller name (freebayes, Mutect2 or Vardict)')
 parser$add_argument('--type', type = 'character', required = TRUE, help = 'Type (chip or somatic)')
 parser$add_argument('--combine_tumor_and_wbc', type = 'character', required = TRUE, help = 'Boolean')
@@ -17,10 +17,13 @@ parser$add_argument('--keyword_for_output_files', type = 'character', required =
 
 args <- parser$parse_args()
 
-# Convert string arguments to logical
+# Handle optional 'consensus' argument with fallback
+if (is.null(args$consensus)) {
+  consensus <- ""
+} else {
+  consensus <- args$consensus
+}
 
-# Access the arguments
-consensus <- args$consensus
 variant_caller <- args$caller
 type <- args$type
 min_alt_reads <- args$min_alt_reads
@@ -30,7 +33,7 @@ combine_tumor_and_wbc <- tolower(args$combine_tumor_and_wbc) == 'true'
 forced_rerun <- tolower(args$forced_rerun) == 'true'
 exclude_nonpathogenic_germline <- args$exclude_nonpathogenic_germline
 do_not_impose_vaf_upper_limit <- args$do_not_impose_vaf_upper_limit
-keyword_for_output_files <- args$path_output
+keyword_for_output_files <- args$keyword_for_output_files
 
 # Print arguments (for testing purposes)
 cat("Consensus:", consensus, "\n")
@@ -41,6 +44,7 @@ cat("min_alt_reads:", min_alt_reads, "\n")
 cat("match_cfDNA_and_WBC_dates:", match_cfDNA_and_WBC_dates, "\n")
 cat("forced_rerun:", forced_rerun, "\n")
 cat("working_dir:", working_dir, "\n")
+cat("Keyword for output files:", keyword_for_output_files, "\n")
 
 # Minor fixes to account for different spellings:
 if (toupper(variant_caller) == "FREEBAYES") {
@@ -74,18 +78,22 @@ library(zoo)
 setwd(working_dir)
 source("/groups/wyattgrp/users/amunzur/toolkit/UTILITIES.R")
 
-PATH_sample_list <- sprintf("../resources/sample_lists/paired_samples.tsv") # must be paired
+# PATH_sample_list <- sprintf("../resources/sample_lists/paired_samples.tsv") # must be paired
+PATH_sample_list <- "/groups/wyattgrp/users/amunzur/hla_pipeline/resources/sample_lists/paired_samples.tsv"
 DIR_mpileup <- sprintf("metrics/mpileup/%s", consensus)
 PATH_bg <- "/groups/wyattgrp/users/jbacon/err_rates/chip_panel_CHIP/error_rate/error_rates.tsv"
-PATH_bg_ctDNA <- "/groups/wyattgrp/users/amunzur/pipeline/resources/bg_error_rate/bgerror/error_rates_ctDNA.tsv"
+# PATH_bg_ctDNA <- "/groups/wyattgrp/users/amunzur/pipeline/resources/bg_error_rate/bgerror/error_rates_ctDNA.tsv"
+PATH_bg_ctDNA <- "/groups/wyattgrp/users/amunzur/hla_pipeline/resources/error_rates/error_rate/error_rates.tsv"
 
-PATH_sample_information <- "../resources/sample_lists/sample_information.tsv"
+# PATH_sample_information <- "../resources/sample_lists/sample_information.tsv"
+PATH_sample_information <- "/groups/wyattgrp/users/amunzur/hla_pipeline/resources/sample_lists/sample_information.tsv"
 PATH_blacklist <- "/groups/wyattgrp/users/amunzur/pipeline/resources/validated_variants/blacklisted_variants.csv"
 
-if (!exists(PATH_sample_list)) {
-  PATH_sample_list <- NULL
-}
+# if (!exists(PATH_sample_list)) {
+#   PATH_sample_list <- NULL
+# }
 
+# PATH_sample_list <- NULL
 chroms <- paste0("chr", c(as.character(1:22), "X", "Y"))
 bg <- read_delim(PATH_bg, delim = "\t", col_types = cols(CHROM = col_character())) %>%
 	  filter(CHROM %in% chroms)
@@ -117,7 +125,7 @@ DIR_mpileup_filtered_chip <- sprintf("metrics/mpileup_filtered_%s/chip/%s", cons
 if (is.null(keyword_for_output_files)) {
   keyword_for_output_files <- ""
 }
-PATH_before_filtering <- sprintf("variant_calling/%s/finalized/%s/CHIP_before_filtering%s.csv", variant_caller, consensus, keyword_for_output_files)
+PATH_before_filtering <- sprintf("variant_calling/%s/finalized/%s/CHIP_before_filtering.csv", variant_caller, consensus)
 PATH_after_filtering <- sprintf("variant_calling/%s/finalized/%s/min_alt_reads_%s_CHIP_after_filtering%s%s.csv", variant_caller, consensus, min_alt_reads, path_suffix, keyword_for_output_files)
 PATH_final_chip <- sprintf("variant_calling/%s/finalized/%s/min_alt_reads_%s_CHIP_final%s%s.csv", variant_caller, consensus, min_alt_reads, path_suffix, keyword_for_output_files)
 
@@ -148,7 +156,7 @@ min_VAF_bg_ratio <- 10
 
 DIR_variant_tables_somatic <- sprintf("data/variant_tables/%s/%s/%s", tolower(type), variant_caller, consensus)
 DIR_mpileup_filtered_somatic <- sprintf("metrics/mpileup_filtered_%s/somatic/%s", consensus, variant_caller)
-PATH_before_filtering_somatic <- sprintf("variant_calling/%s/finalized/%s/SOMATIC_before_filtering_%s.csv", variant_caller, consensus, keyword_for_output_files)
+PATH_before_filtering_somatic <- sprintf("variant_calling/%s/finalized/%s/SOMATIC_before_filtering.csv", variant_caller, consensus)
 PATH_final_somatic <- sprintf("variant_calling/%s/finalized/%s/SOMATIC_final_%s.csv", variant_caller, consensus, keyword_for_output_files)
 
 if (!dir.exists(sprintf("variant_calling/%s/finalized/%s", variant_caller, consensus))) {
@@ -184,7 +192,7 @@ if (toupper(type) == "CHIP"){
 	write_csv(vars, PATH_final_chip)
 
 } else if (toupper(type) == "SOMATIC") {
-	if (forced_rerun || !file.exists(PATH_before_filtering)) {
+	if (forced_rerun || !file.exists(PATH_before_filtering_somatic)) {
 		vars <- parse_anno_output(DIR_variant_tables_somatic, "somatic", variant_caller, PATH_sample_list = PATH_sample_list)
 		vars <- add_patient_information_somatic(vars, PATH_sample_information)
 		vars <- add_bg_error_rate(vars, bg_ctDNA)

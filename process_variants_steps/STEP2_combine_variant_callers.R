@@ -7,7 +7,7 @@ parser <- ArgumentParser(description = 'Combine variant callers')
 # parser$add_argument('--min_alt_reads', type = 'character', required = TRUE, help = '')
 parser$add_argument('--dir_working', type = 'character', required = TRUE, help = '')
 parser$add_argument('--mutation_type', type = 'character', required = TRUE, help = 'chip or somatic, case does not matter')
-parser$add_argument('--consensus', type = 'character', required = TRUE, help = '')
+parser$add_argument('--consensus', type = 'character', required = FALSE, help = '')
 parser$add_argument('--DIR_bams', type = 'character', required = TRUE, help = 'Location of the bams.')
 parser$add_argument('--path_output', type = 'character', required = FALSE, help = 'Output file will be saved here.')
 parser$add_argument('--WBC_only', action = 'store_true', help = 'Are these WBC only calls?')
@@ -17,11 +17,10 @@ args <- parser$parse_args()
 print(args)
 
 # Rscript /groups/wyattgrp/users/amunzur/toolkit/STEP2_combine_variant_callers.R \
-# --dir_working /groups/wyattgrp/users/amunzur/lu_chip/ \
-# --mutation_type chip \
-# --consensus SSCS2 \
-# --DIR_bams /groups/wyattgrp/users/amunzur/lu_chip/results/data/bam/SSCS2_final \
-# --path_output /groups/wyattgrp/users/amunzur/lu_chip/results/variant_calling/CHIP_SSCS2WBConly.csv \
+# --dir_working /groups/wyattgrp/users/amunzur/hla_pipeline/ \
+# --mutation_type somatic \
+# --DIR_bams /groups/wyattgrp/users/amunzur/hla_pipeline/results/data/bam/sorted \
+# --path_output /groups/wyattgrp/users/amunzur/hla_pipeline/results/variant_calling/ctdna_mutations.csv \
 # --WBC_only \
 # --input_file_keyword WBConly
 
@@ -30,11 +29,17 @@ print(args)
 # min_alt_reads <- as.numeric(args$min_alt_reads)
 dir_working <- args$dir_working
 mutation_type <- toupper(args$mutation_type)
-consensus <- args$consensus
 DIR_bams <- args$DIR_bams
 WBC_only <- args$WBC_only
 path_output <- args$path_output
 input_file_keyword <- args$input_file_keyword
+
+if (is.null(args$consensus)) {
+  consensus <- ""
+} else {
+  consensus <- args$consensus
+}
+
 print(input_file_keyword)
 ############################################################################
 
@@ -76,9 +81,9 @@ df_list <- list()  # Initialize an empty list
 for (variant_caller in variant_callers) {
   # file_path <- sprintf("/groups/wyattgrp/users/amunzur/pipeline/results/wbc_downsampling/depth_%s/variant_calling/%s/finalized/%s/min_alt_reads_%s_%s_final.csv", depth, variant_caller, consensus, min_alt_reads, toupper(type))
     if (mutation_type == "CHIP") {
-      file_path <- sprintf("%s/results/variant_calling/%s/finalized/SSCS2/min_alt_reads_5_CHIP_final%s.csv", dir_working, variant_caller, input_file_keyword)
+      file_path <- sprintf("%s/results/variant_calling/%s/finalized/%s/min_alt_reads_5_CHIP_final%s.csv", dir_working, variant_caller, consensus, input_file_keyword)
     } else {
-      file_path <- sprintf("%sresults/variant_calling/%s/finalized/SSCS2/SOMATIC_final%s.csv", dir_working, variant_caller, input_file_keyword)
+      file_path <- sprintf("%sresults/variant_calling/%s/finalized/%s/SOMATIC_final%s.csv", dir_working, variant_caller, consensus, input_file_keyword)
     }
   if (file.exists(file_path)) {
     df = read_csv(file_path)

@@ -9,7 +9,7 @@ import subprocess
 import time
 import re
 
-path_muts="/groups/wyattgrp/users/amunzur/ironman_ch/results/variant_calling/CHIP_SSCS2_curated.csv"
+path_muts="/groups/wyattgrp/users/amunzur/ironman_ch/results/variant_calling/IRONMAN_CH_calls.csv"
 dir_filtered_mpileups="/groups/wyattgrp/users/amunzur/ironman_ch/results/metrics/mpileup_for_matrix"
 dir_mpileups="/groups/wyattgrp/users/amunzur/ironman_ch/results/metrics/mpileup/SSCS2"
 path_sample_information="/groups/wyattgrp/users/amunzur/ironman_ch/resources/sample_lists/sample_information.tsv"
@@ -24,11 +24,6 @@ def generate_unique_mutation_list(path_muts):
     unique_muts=muts[["Gene", "Chrom", "Position", "Alt", "Type", "Protein_annotation"]].drop_duplicates()
     
     return(unique_muts)
-
-def run_system_grep():
-    """
-    Runs grep on bash from Python.
-    """
 
 def run_commands_in_batches(command_list, batch_size=50, delay_between_batches=1):
     """
@@ -79,6 +74,51 @@ def check_if_mutation_was_called(sample, chrom, pos, protein_annot, alt, path_mu
     
     return mut_called
 
+def parse_insertions(consensus_read_bases, alt):
+    # Normalize ALT to lowercase to match against lowercase insertions
+    alt = alt.lower()[1:] # To allow flexible match without the initial base
+    # Regex pattern to match insertions of the form +<len><sequence>
+    insertion_pattern = re.compile(r'\+(\d+)([acgtnACGTN]+)', re.IGNORECASE)
+    matches = insertion_pattern.findall(consensus_read_bases)
+    count = 0
+    for length_str, sequence in matches:
+        if sequence.lower() == alt:
+            count += 1
+    
+    return count
+
+def count_deletions(pileup_seq, expected_del=None):
+    """
+    Count deletions in pileup consensus string.
+    Args:
+        pileup_seq (str): Pileup consensus string.
+        expected_del (str): Optional. If provided, only count this deletion sequence.
+    Returns:
+        int: Number of deletion-supporting reads.
+    """
+    i = 0
+    count = 0
+    while i < len(pileup_seq):
+        if pileup_seq[i] == '*':
+            count += 1
+            i += 1
+        elif pileup_seq[i] == '-':
+            i += 1
+            length_str = ''
+            while i < len(pileup_seq) and pileup_seq[i].isdigit():
+                length_str += pileup_seq[i]
+                i += 1
+            if not length_str:
+                continue
+            length = int(length_str)
+            del_seq = pileup_seq[i:i + length]
+            i += length
+            if expected_del is None or del_seq.upper() == expected_del.upper():
+                count += 1
+        else:
+            i += 1
+    
+    return(count)
 
 def return_depth_and_n_altered_from_filtered_mpileup(path_filtered_mpileup, chrom, pos, mut_type, alt):
     """
@@ -97,13 +137,15 @@ def return_depth_and_n_altered_from_filtered_mpileup(path_filtered_mpileup, chro
     if mut_type.upper() == "SNV":
         n_alt = consensus_read_bases.lower().count(alt.lower())
     elif mut_type.upper() == "INSERTION":
+        n_alt = parse_insertions(consensus_read_bases, alt)
         # Match insertions with the format +<length><alt>
-        insertion_pattern = rf"\+{len(alt)}{alt}"
-        n_alt = len(re.findall(insertion_pattern, consensus_read_bases))
+        # insertion_pattern = rf"\+{len(alt)}{alt}"
+        # n_alt = len(re.findall(insertion_pattern, consensus_read_bases))
     elif mut_type.upper() == "DELETION":
+        n_alt=count_deletions(consensus_read_bases, expected_del=alt)
         # Match deletions with the format -<length><ref>
-        deletion_pattern = rf"-{len(alt)}{alt}"
-        n_alt = len(re.findall(deletion_pattern, consensus_read_bases))
+        # deletion_pattern = rf"-{len(alt)}{alt}"
+        # n_alt = len(re.findall(deletion_pattern, consensus_read_bases))
     else:
         raise ValueError("Invalid mutation type. Use 'SNV', 'INSERTION', or 'DELETION'.")
     
@@ -121,15 +163,18 @@ sample_list["Patient_id"]=sample_list["Patient_id"].str.replace("-", "_")
 unique_muts=generate_unique_mutation_list(path_muts)
 grep_command_list=[]
 for i, row in unique_muts.iterrows():
-    chrom=row["Chrom"]
-    pos=row["Position"]
+    chrom = row["Chrom"]
+    pos = row["Position"]
     for sample in sample_list["Patient_id"]:
-        path_mpileup=os.path.join(dir_mpileups, sample+".mpileup")
-        path_grepped_output=os.path.join(dir_filtered_mpileups, f"{sample}_{chrom}_{pos}.tsv")
-        grep_command=f"grep {pos} {path_mpileup} > {path_grepped_output}"
-        grep_command_list.append(grep_command)
+        path_mpileup = os.path.join(dir_mpileups, sample + ".mpileup")
+        path_grepped_output = os.path.join(dir_filtered_mpileups, f"{sample}_{chrom}_{pos}.tsv")
+        
+        # Check if file does not exist or has size 0
+        if not os.path.isfile(path_grepped_output) or os.path.getsize(path_grepped_output) == 0:
+            grep_command = f"grep {pos} {path_mpileup} > {path_grepped_output}"
+            grep_command_list.append(grep_command)
 
-run_commands_in_batches(grep_command_list, batch_size=50)
+run_commands_in_batches(grep_command_list, batch_size=200)
 
 # STEP 2. GO THROUGH GREPPED OUTPUTS FROM MPILEUP AND START BUILDING THE SAMPLE/MUTATION MATRIX, 
 # PAYING ATTENTION TO WHETHER THE MUTATION WAS CALLED OR NOT IN A GIVEN SAMPLE.
@@ -143,6 +188,10 @@ for i, row in unique_muts.iterrows():
     mut_type = row["Type"]
     alt = row["Alt"]
     
+    # if mut_type=="Insertion":
+    #     print(mut_type)
+    #     break
+        
     if pd.isna(row["Protein_annotation"]):
         annot="splice"
     else:
@@ -186,4 +235,6 @@ mut_sample_df.columns = ["Mutation_ID"] + list(mut_sample_df.columns[1:])
 
 # Display the resulting DataFrame
 print(mut_sample_df)
-mut_sample_df.to_csv(path_matrix, index=False)
+
+
+mut_sample_df.to_csv("/groups/wyattgrp/users/amunzur/ironman_ch/results/variant_calling/ironman_mutation_sample_matrix_TEST.csv", index=False)

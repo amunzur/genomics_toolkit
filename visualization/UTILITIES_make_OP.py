@@ -6,7 +6,7 @@ def enumerate_col(df, old_col, new_col):
     df[new_col] = df[old_col].map({gene: number + 1 for number, gene in enumerate(df[old_col].unique())})
     return(df)
 
-def plot_mut_counts_per_gene(mut_counts_df, vaf_df, ax_mut_counts, mut_dict, bar_height, logscale = False, vaf_col = "VAF_t", show_median=True):
+def plot_mut_counts_per_gene(mut_counts_df, vaf_df, ax_mut_counts, mut_dict, bar_height, logscale=False, vaf_col="VAF_t", show_median=True):
     ax_secondary = ax_mut_counts.twiny()
     values = mut_counts_df.values.T
     bottom = np.zeros_like(mut_counts_df.index)
@@ -17,10 +17,10 @@ def plot_mut_counts_per_gene(mut_counts_df, vaf_df, ax_mut_counts, mut_dict, bar
         bottom += values[i]
     
     remove_frame(ax_mut_counts, ["top", "right"])
-    ax_mut_counts.set_xlim((0, 50))
+    ax_mut_counts.set_xlim((0, 100))
     ax_mut_counts.set_xticks([])
-    ax_mut_counts.set_xticks([0, 25, 50])
-    ax_mut_counts.set_xticklabels(["0", "25", "50"], fontsize = 5)
+    ax_mut_counts.set_xticks([0, 50, 100])
+    ax_mut_counts.set_xticklabels(["0", "50", "100"], fontsize = 5)
     plt.setp(ax_mut_counts.get_yticklabels(), visible=False)
     ax_mut_counts.set_xlabel("Mutation counts\nper gene", fontsize = 6)
     ax_mut_counts.tick_params(axis="x", direction="out", bottom=True, top = True, colors='k')
@@ -31,10 +31,10 @@ def plot_mut_counts_per_gene(mut_counts_df, vaf_df, ax_mut_counts, mut_dict, bar
     # Plot the vafs of mutations
     if logscale:
         vaf_df["vaf_col_log"] = np.log10(vaf_df[vaf_col])
-        ax_secondary.set_xlim((np.log10(0.25), np.log10(30)))
+        ax_secondary.set_xlim((np.log10(0.25), np.log10(40)))
         ax_secondary.set_xticks([])
-        ax_secondary.set_xticks([np.log10(0.25), np.log10(2), np.log10(30)])
-        ax_secondary.set_xticklabels(["0.25", "2", "30"], fontsize = 5)
+        ax_secondary.set_xticks([np.log10(0.25), np.log10(2), np.log10(10), np.log10(40)])
+        ax_secondary.set_xticklabels(["0.25", "2", "10", "40"], fontsize = 5)
     else:
         ax_secondary.set_xlim((0, 100))
         ax_secondary.set_xticks([])
@@ -179,7 +179,7 @@ def add_legend(mut_dict, ax, age_df, fig, ct_and_ctdna_combined = False):
     ax.tick_params(axis='y', which='both', left=False, labelleft=False)
     return ax
 
-def add_legend_simple(mut_dict, ax):
+def add_legend_simple(mut_dict, ax, ncol=1):
     """
     Just adds legend for mutation types: missense etc.
     """
@@ -187,8 +187,8 @@ def add_legend_simple(mut_dict, ax):
     legend_labels = mut_dict.keys()
     legend_handles = [plt.Line2D([0], [0], marker='s', color=color, label=label, markersize=2, linestyle='') for color, label in zip(legend_colors, legend_labels)]
     legend_handles.append(Line2D([0], [0], marker='D', color='black', markersize=2, label='4 or more mutations'))
-    ax.legend(handles=legend_handles, loc="upper right", frameon=False, fontsize = 4, handlelength=2, handletextpad = 0.1, bbox_to_anchor=(0.2, 0.45))
-        
+    ax.legend(handles=legend_handles, loc="upper right", frameon=False, fontsize = 4, handlelength=2, handletextpad = 0.1, ncol=ncol)
+    
     ax.spines[["top", "right", "bottom", "left"]].set_visible(False)
     ax.tick_params(axis='x', which='both', bottom=False, labelbottom=False)
     ax.tick_params(axis='y', which='both', left=False, labelleft=False)
@@ -330,7 +330,7 @@ def calculate_patient_counts(muts_df):
     pt_counts = muts_df["Patient_id"].value_counts().reset_index().rename(columns = {"index": "Patient_id", "Patient_id": "Count"})
     return(pt_counts)
 
-def get_mutation_counts_per_gene(muts_df, make_a_seperate_category_for_multiple=True):
+def get_mutation_counts_per_gene(muts_df, vaf_colname, make_a_seperate_category_for_multiple=True):
     """
     This is for the sideways stacked bar chart, showing the number of mutations per gene.
     """
@@ -348,12 +348,14 @@ def get_mutation_counts_per_gene(muts_df, make_a_seperate_category_for_multiple=
     mut_counts_df = df[["Gene", "Consequence"]].pivot_table(index='Gene', columns='Consequence', aggfunc=len, fill_value=0).reset_index()
     
     # Generate the VAF df
-    if "Status" in muts_df.columns:
-        vaf_col = "VAF_t"
-    else:
-        vaf_col = "VAF_n"
+    # if "Status" in muts_df.columns:
+    #     vaf_col = "VAF_t"
+    # elif "VAF_n" in muts_df.columns:
+    #     vaf_col = "VAF_n"
+    # else:
+    #     vaf_col="VAF"
     
-    vaf_df = muts_df[["Gene", vaf_col]]
+    vaf_df = muts_df[["Gene", vaf_colname]]
     return(mut_counts_df, vaf_df)
 
 def return_ctDNA_fractions(PATH_sample_information, PATH_mutation_ctfractions, ctdna_muts, ch_muts):
@@ -767,31 +769,33 @@ def generate_plotting_df(muts_df, mut_dict, gene_order_df):
     df.columns = ["Patient_id", "Gene", "Consequence", "Counts", "mut color", "gene_position"]    
     return(df)
 
-def plot_oncoprint_compressed(ax_main, gene_order_df, muts_ctDNA, muts_ch, bar_height, bar_width):
+def plot_oncoprint_compressed(ax_main, gene_order_df, muts_ch, bar_height, bar_width, muts_ctDNA=None):
     
     if muts_ctDNA is not None:
         pts = pd.concat([muts_ctDNA, muts_ch])["Samples_enumerated"].unique()
-    else:
-        pts = muts_ch["Samples_enumerated"].unique()    
     
-    # Layout the grids
-    for i, row in gene_order_df.iterrows():
-        for j in pts:
-            CH_position = row["CH position"]
-            ctDNA_position = row["ctDNA position"]
-            
-            if CH_position is not None:
+        # Layout the grids
+        for i, row in gene_order_df.iterrows():
+            for j in pts:
+                CH_position = row["CH position"]
+                ctDNA_position = row["ctDNA position"]
                 ax_main.bar(x = j, bottom = CH_position, height = bar_height, width=bar_width, capstyle='butt', color = "whitesmoke", edgecolor = "none", linewidth = 0.25, zorder = 10)
-            
-            if not np.isnan(ctDNA_position) and ctDNA_position is not None:
                 ax_main.bar(x = j, bottom = ctDNA_position, height = bar_height, width=bar_width, capstyle='butt', color = "gainsboro", edgecolor = "none", linewidth = 0.25, zorder = 10)  
-    
-    # 1.2 Plot the mutations in genes
-    size_scatter = 4
-    for muts_df in [muts_ctDNA, muts_ch]:
-        if muts_df is not None:
+        
+        for muts_df in [muts_ctDNA, muts_ch]:
             for index, row in muts_df.iterrows():
                 ax_main.bar(x = row["Samples_enumerated"], bottom = row["gene_position"], height = bar_height, width=bar_width, capstyle='butt', color = row["mut color"], edgecolor = "none", linewidth = 0.25, zorder = 10)
+    
+    else:
+        pts = muts_ch["Samples_enumerated"].unique()
+        
+        for i, row in gene_order_df.iterrows():
+            for j in pts:
+                CH_position = row["CH position"]
+                ax_main.bar(x = j, bottom = CH_position, height = bar_height, width=bar_width, capstyle='butt', color = "whitesmoke", edgecolor = "none", linewidth = 0.25, zorder = 10)
+                
+                for index, row in muts_ch.iterrows():
+                    ax_main.bar(x = row["Samples_enumerated"], bottom = row["gene_position"], height = bar_height, width=bar_width, capstyle='butt', color = row["mut color"], edgecolor = "none", linewidth = 0.25, zorder = 10)
     return ax_main
 
 def get_diagnosis(df, PATH_sample_information):
@@ -874,3 +878,71 @@ def plot_mut_counts_per_patient_single_df(ax_mut_counts_patient, df_patient_coun
     ax_mut_counts_patient.tick_params(width=0.5)
     return ax_mut_counts_patient
 
+def assign_custom_index(path_gene_groups, spacing_within=0.3, spacing_between=0.4):
+    """
+    Assigns a custom index that increases normally within the same group and adds extra space when transitioning.
+    """
+    df=pd.read_csv(path_gene_groups, sep="\t", header=None, names=["Gene", "Group"])
+    df = df.copy()  # Avoid modifying the original DataFrame
+    col_group = df.columns[1]  # Automatically detect group column
+    new_index = []
+    current_idx = 0
+    prev_group = None
+    
+    previous_group=None
+    current_idx=0
+    new_index = []
+    for i, row in df.iterrows():
+        row_group=row["Group"]
+        if previous_group is None or row_group==previous_group:
+            current_idx+=spacing_within
+        else:
+            current_idx+=spacing_between
+        previous_group=row_group
+        new_index.append(current_idx)
+    
+    df["CH position"] = new_index
+    return df
+
+def generated_samples_enumerated_dict(ch_plotting_df, ch_pt_counts):
+    """
+    
+    """   
+    samples_enumerated = ch_plotting_df.merge(ch_pt_counts)
+    samples_enumerated = samples_enumerated[[
+        "Patient_id",
+        "Arm" ,
+        'Gene',
+        'Consequence',
+        'Count',
+    ]]
+    
+    # genes_to_include=["DNMT3A", "ASXL1", "TET2", "PPM1D", "CHEK2", "ATM", "TP53"]
+    gene_sort_order=["PPM1D", "CHEK2", "ATM", "TP53", "DNMT3A", "TET2", "ASXL1"]
+    samples_enumerated["Gene"] = pd.Categorical(samples_enumerated["Gene"], categories=gene_sort_order, ordered=True)
+    samples_enumerated["Consequence"] = pd.Categorical(samples_enumerated["Consequence"], categories=mut_dict.keys(), ordered=True)
+    samples_enumerated=samples_enumerated.dropna()
+    samples_enumerated_lu=samples_enumerated[samples_enumerated["Arm"]=="LuPSMA"]
+    samples_enumerated_caba=samples_enumerated[samples_enumerated["Arm"]=="Cabazitaxel"]
+    
+    samples_enumerated_lu=samples_enumerated_lu.sort_values(by=["Gene", "Consequence", "Count"], ascending=[True, False, True]).reset_index(drop = True).reset_index(drop = True)
+    samples_enumerated_lu=samples_enumerated_lu.drop_duplicates("Patient_id")[["Patient_id", "Arm"]].reset_index(drop = True).reset_index()
+    samples_enumerated_lu=samples_enumerated_lu[["Patient_id", "Arm", "index"]].rename(columns = {"index": "Samples_enumerated"})
+    
+    samples_enumerated_caba=samples_enumerated_caba.sort_values(by=["Gene", "Consequence", "Count"], ascending=[True, False, True]).reset_index(drop = True).reset_index(drop = True)
+    samples_enumerated_caba=samples_enumerated_caba.drop_duplicates("Patient_id")[["Patient_id", "Arm"]].reset_index(drop = True).reset_index()
+    samples_enumerated_caba=samples_enumerated_caba[["Patient_id", "Arm", "index"]].rename(columns = {"index": "Samples_enumerated"})
+    
+    samples_enumerated_dict={"LuPSMA": samples_enumerated_lu, "Cabazitaxel": samples_enumerated_caba}
+    
+    return(samples_enumerated_dict)
+
+def plot_oncoprint_compressed_tiny(ax_main, muts_df, bar_height, bar_width):
+    for i, row in muts_df.iterrows():
+        ypos=row["CH position"]
+        xpos=row["Samples_enumerated"]
+        bar_color=row["Mutation_color"]
+        ax_main.bar(x=xpos, bottom=ypos, height = bar_height, width=bar_width, capstyle='butt', color=bar_color, edgecolor = "none", linewidth = 0.25, zorder = 10)
+    return(ax_main)
+
+    

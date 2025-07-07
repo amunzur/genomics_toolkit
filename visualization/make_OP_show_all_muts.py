@@ -1,4 +1,34 @@
-#!/bin/python
+#!~/anaconda3/envs/snakemake/bin/python
+
+"""
+Generates an oncoprint summarizing CH mutations across patients from a curated mutation file.
+
+Features:
+- Standardizes mutation consequence labels
+- Computes mutation burden per gene and per patient
+- Plots max VAF per patient and color-coded mutation types
+- Supports custom gene ordering and figure sizing
+- Outputs PNG and PDF figures
+
+Arguments:
+- --path_muts: Path to input mutation CSV
+- --dir_figures: Output directory for figures
+- --keyword: Label to include in output filenames
+- --vaf_colname: Column name for VAF values
+- --figure_width / --figure_height: Optional figure dimensions
+- --figure_title: Optional figure title
+
+Example:
+python make_OP_show_all_muts.py \
+    --path_muts chip.csv \
+    --dir_figures figs/ \
+    --keyword CH_summary \
+    --vaf_colname VAF%
+
+Requires: pandas, matplotlib, seaborn, and UTILITIES_make_OP.py
+"""
+
+# Make sure to run in base env
 import os
 import pandas as pd
 import numpy as np
@@ -48,13 +78,8 @@ mpl.rcParams['legend.labelspacing'] = '0.2'
 plt.rcParams['legend.handlelength'] = 0.4
 plt.rcParams['legend.handleheight'] = 0.70
 
-# # LOAD DATASETS
-# DIR_working = "/groups/wyattgrp/users/amunzur/ironman_ch"
-# path_muts="/groups/wyattgrp/users/amunzur/ironman_ch/results/variant_calling/IRONMAN_CH_calls.csv"
-# PATH_sample_information = os.path.join(DIR_working, "resources/sample_lists/sample_information.tsv")
-
 # source functions
-source_functions = "/groups/wyattgrp/users/amunzur/toolkit/UTILITIES_make_OP.py"
+source_functions = "UTILITIES_make_OP.py" # In the same toolkit dir
 with open(source_functions, 'r') as file:
     script_code = file.read()
 
@@ -64,31 +89,52 @@ def main():
     parser = argparse.ArgumentParser(description="Makes oncoprint.")
     parser.add_argument("--path_muts", required=True, help="Path to curated mutation list.")
     parser.add_argument("--dir_figures", required=True, help="DIR where the figures will be saved.")
+    parser.add_argument("--keyword", required=True, help="Will be included in the filename.")
+    parser.add_argument("--vaf_colname", required=True, help="What is the name of the VAF column?")
+    parser.add_argument("--figure_width", required=False, default=4, type=float, help="")
+    parser.add_argument("--figure_height", required=False, default=8, type=float, help="")
+    parser.add_argument("--figure_title", required=False, default="", type=str, help="")
     args = parser.parse_args()
     
     path_muts=args.path_muts
     dir_figures=args.dir_figures
+    keyword=args.keyword
+    vaf_colname=args.vaf_colname
+    figure_width=args.figure_width
+    figure_height=args.figure_height
+    figure_title=args.figure_title
     
     # CH mutations
     chip_main = pd.read_csv(path_muts)
-    chip_main["Timepoint"]="Baseline"
+    # chip_main["Timepoint"]="Baseline"
     chip_main["Status"]="CHIP"
     # chip_main=chip_main[chip_main["Function"]!="upstream"]
-
-    if "VAF_t" in chip_main.columns and chip_main["VAF_t"].min()<0.25:
-        chip_main["VAF_t"]=chip_main["VAF_t"]*100
     
-    if "VAF_n" in chip_main.columns and chip_main["VAF_n"].min()<0.25:
-        chip_main["VAF_n"]=chip_main["VAF_n"]*100
+    if chip_main[vaf_colname].min()<0.25:
+        chip_main[vaf_colname]=chip_main[vaf_colname]*100
     
-    if "VAF" in chip_main.columns and chip_main["VAF"].min()<0.25:
-        chip_main["VAF"]=chip_main["VAF"]*100
+    # if "VAF_t" in chip_main.columns and chip_main["VAF_t"].min()<0.25:
+    #     chip_main["VAF_t"]=chip_main["VAF_t"]*100
+    #     vaf_col="VAF_t"
+    
+    # if "VAF_n" in chip_main.columns and chip_main["VAF_n"].min()<0.25:
+    #     chip_main["VAF_n"]=chip_main["VAF_n"]*100
+    #     vaf_col="VAF_t"
+    
+    # if "VAF" in chip_main.columns and chip_main["VAF"].min()<0.25:
+    #     chip_main["VAF"]=chip_main["VAF"]*100
+    #     vaf_col="VAF"
+    
+    # if "VAF%" in chip_main.columns and chip_main["VAF%"].min()<0.25:
+    #     chip_main["VAF_t"]=chip_main["VAF%"]*100
+    #     vaf_col="VAF_t"
 
     # chip_main=chip_main.rename(columns={"VAF": "VAF_t"})
     # chip_main.loc[chip_main["Gene"]=="TERT", "Gene"]="TERT p."
 
     # all_vars_chip =co all_vars_chip[(all_vars_chip["Dependent"] == False) & (all_vars_chip["Timepoint"] == "Baseline")]
     # chip_main["Consequence"] = chip_main["Consequence"].replace({"Frameshift deletion":"Frameshift indel", "Frameshift insertion":"Frameshift indel", "frameshift_insertion": "Frameshift indel", "Nonframeshift deletion":"Nonframeshift indel", "Nonframeshift insertion":"Nonframeshift indel"})
+    chip_main=chip_main[chip_main["Consequence"]!="synonymous_SNV"]
     chip_main["Consequence"] = chip_main["Consequence"].str.lower()
     chip_main["Consequence"] = chip_main["Consequence"].replace(
         {"frameshift_deletion":"frameshift indel", 
@@ -96,7 +142,10 @@ def main():
          "nonframeshift deletion":"nonframeshift indel", 
          "nonframeshift insertion":"nonframeshift indel", 
          "nonframeshift_deletion": "nonframeshift indel",
+         "nonframeshift_insertion": "nonframeshift indel",
          "frameshift_insertion": "nonframeshift indel",
+         "frameshift_substitution": "frameshift indel",
+         "nonframeshift_substitution": "nonframeshift indel",
          ".": "splicing", 
          "nonsynonymous_snv": "missense"})
         
@@ -110,8 +159,8 @@ def main():
     
     # CH dfs
     # ch_plotting_df = generate_plotting_df(chip_main, mut_dict, gene_order_df) # makes up bulk of the plot
-    ch_vaf = get_mutation_counts_per_gene(chip_main)[1].merge(gene_order_df[["Gene", "CH position"]], how = "left").rename(columns = {"CH position": "Order on oncoprint"}).set_index("Order on oncoprint").drop("Gene", axis = 1)
-    ch_mut_counts  = get_mutation_counts_per_gene(chip_main, make_a_seperate_category_for_multiple=False)[0].merge(gene_order_df[["Gene", "CH position"]], on="Gene", how = "inner").rename(columns = {"CH position": "Order on oncoprint"}).set_index("Order on oncoprint").drop("Gene", axis = 1)
+    ch_vaf = get_mutation_counts_per_gene(chip_main, vaf_colname=vaf_colname)[1].merge(gene_order_df[["Gene", "CH position"]], how = "left").rename(columns = {"CH position": "Order on oncoprint"}).set_index("Order on oncoprint").drop("Gene", axis = 1)
+    ch_mut_counts  = get_mutation_counts_per_gene(chip_main, make_a_seperate_category_for_multiple=False, vaf_colname=vaf_colname)[0].merge(gene_order_df[["Gene", "CH position"]], on="Gene", how = "inner").rename(columns = {"CH position": "Order on oncoprint"}).set_index("Order on oncoprint").drop("Gene", axis = 1)
     
     ch_pt_counts = calculate_patient_counts(chip_main)
     
@@ -138,8 +187,8 @@ def main():
     ch_pt_counts = ch_pt_counts.merge(samples_enumerated, how = "left")
     
     # PLOTTING    
-    fig_width = 4
-    fig_height = 8
+    fig_width = figure_width
+    fig_height = figure_height
     tc_height = 2
     mutcounts_height = 2
     sex_height = 0.5
@@ -162,30 +211,23 @@ def main():
     bar_width = 0.6
     
     # ax_ctDNA_vaf = plot_highest_VAF_per_patient(ax_ctDNA_vaf, ctDNA_main, samples_enumerated, bar_width = bar_width)
-    ax_CH_vaf = plot_highest_VAF_per_patient(ax_CH_vaf, chip_main, samples_enumerated, bar_width = bar_width, vaf_col="VAF_t")
+    ax_CH_vaf = plot_highest_VAF_per_patient(ax_CH_vaf, chip_main, samples_enumerated, bar_width = bar_width, vaf_col=vaf_colname)
     ax_main= plot_oncoprint_single_dataset(ax_main, gene_order_df, ch_plotting_df, bar_height, bar_width, colnamepos="CH position", size_scatter=2)
     ax_main = beautify_OP_ax_single_dataset(ax_main, gene_order_df, samples_enumerated, xlabel = "", fontsize = 6, bar_height=bar_height)    
-    [ax_mut_counts, ax_secondary] = plot_mut_counts_per_gene(ch_mut_counts, ch_vaf, ax_mut_counts, mut_dict, bar_height = bar_height, logscale = True, vaf_col = "VAF_t", show_median=False) # Plot CH mutations
+    [ax_mut_counts, ax_secondary] = plot_mut_counts_per_gene(ch_mut_counts, ch_vaf, ax_mut_counts, mut_dict, bar_height = bar_height, logscale = True, vaf_col = vaf_colname, show_median=False) # Plot CH mutations
     
     ax_mut_counts_patient = plot_mut_counts_per_patient_single_df(ax_mut_counts_patient, ch_pt_counts, bar_width)
     ax_legend = add_legend_simple(mut_dict, ax_legend)
     
-    fig.savefig(os.path.join(dir_figures, "OP.pdf"), transparent=True)
-    fig.savefig(os.path.join(dir_figures, "OP.png"), transparent=True)
+    fig.suptitle(figure_title)
+    fig.savefig(os.path.join(dir_figures, f"OP_{keyword}.pdf"), transparent=True)
+    fig.savefig(os.path.join(dir_figures, f"OP_{keyword}.png"))
     
-    print(f"SAVED TO {dir_figures}")
+    # print(f"SAVED TO {dir_figures}")
 
 if __name__ == "__main__":
     main()
 
-# path_muts="/groups/wyattgrp/users/amunzur/prince_ch/results/variant_calling/CHIP_SSCS2_curated.csv"
-
-"""
-python /groups/wyattgrp/users/amunzur/toolkit/make_OP_show_all_muts.py \
-    --path_muts /groups/wyattgrp/users/amunzur/prince_ch/results/variant_calling/CHIP_SSCS2_curated.csv \
-    --dir_figures /groups/wyattgrp/users/amunzur/prince_ch/results/figures/patient_profiles \
-"""
-
-path_muts="/groups/wyattgrp/users/amunzur/prince_ch/results/variant_calling/CHIP_SSCS2_curated.csv"
-dir_figures="/groups/wyattgrp/users/amunzur/prince_ch/results/figures/patient_profiles"
-
+# python /path/to/toolkit/make_OP_show_all_muts.py \
+    # --path_muts /path/to/results/variant_calling/CHIP_SSCS2_curated.csv \
+    # --dir_figures /path/to/results/figures/patient_profiles \

@@ -53,22 +53,22 @@ def make_igv_batch_script(
 	with open(PATH_batch, 'a') as the_file: the_file.write('exit') # append an exist statement at the end so that IGV closes on its own
 	print("/home/amunzur/IGV_Linux_2.11.3/igv.sh --batch ", PATH_batch) # print the exact command needed to turn IGV to terminal
 
-# PATH_variants_df = "/groups/wyattgrp/users/amunzur/pipeline/results/variant_calling/combined/tumor_wbc.csv"
-PATH_variants_df = "/groups/wyattgrp/users/amunzur/lu_chip/results/variant_calling/CHIP_SSCS2WBConly.csv" # variants csv file
-PATH_batch = "/groups/wyattgrp/users/amunzur/lu_chip/workflow/scripts/IGV_batch_scripts/LuPSMA_CHIP_WBC_only.txt" # where the batch script is saved
-DIR_snapshots = "/groups/wyattgrp/users/amunzur/lu_chip/results/figures/IGV_snapshots/CHIP_WBC_only" # dir where snapshots will be saved
+PATH_variants_df = "/groups/wyattgrp/users/amunzur/hla_pipeline/results/variant_calling/ctdna_mutations.csv" # variants csv file
+PATH_batch = "/groups/wyattgrp/users/amunzur/hla_pipeline/workflow/scripts/batch_scripts/IGV_batch_ctdna_mutations.txt" # where the batch script is saved
+DIR_snapshots = "/groups/wyattgrp/users/amunzur/hla_pipeline/results/figures/IGV_snapshots" # dir where snapshots will be saved
 given_range = 100
 add_prefix = "" # if .bam suffix needs to be added 
 add_suffix = ""
 
-df = pd.read_csv(PATH_variants_df)[["Patient_id", "Protein_annotation", "Gene", "Chrom", "Position", "Sample_name", "Path_bam_n"]] # assuming these cols exist in the variants file
+df = pd.read_csv(PATH_variants_df)[["Patient_id", "Protein_annotation", "Gene", "Chrom", "Position", "Sample_name_t", "Path_bam_t", "Path_bam_n"]] # assuming these cols exist in the variants file
+# df["Path_bam_n"]="/groups/wyattgrp/users/amunzur/lu_chip/results/bam/SSCS2_final/"+df["Sample_name"]+".bam"
 
 try:
 	os.remove(PATH_batch)
 except:
 	print("Error while deleting batch files")
 
-make_igv_batch_script(df, PATH_batch, DIR_snapshots, add_prefix, add_suffix, given_range, WBC_only = True)
+make_igv_batch_script(df, PATH_batch, DIR_snapshots, add_prefix, add_suffix, given_range, WBC_only = False)
 
 # For progression cfDNA only mutations
 path="/groups/wyattgrp/users/amunzur/ironman_ch/results/variant_calling/CHIP_SSCS2.csv"

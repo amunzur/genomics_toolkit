@@ -2,9 +2,9 @@
 
 # Writes batch script to run Amplicon architect.
 
-# /groups/wyattgrp/users/amunzur/toolkit/calculate_CN_segment.py \
-#     --path_segmentation /groups/wyattgrp/users/amunzur/ecdna_project/igv_tracks/OZM-054-018-003-cfDNA-2016Jan13_segments.tsv \
-#     --path_output /groups/wyattgrp/users/amunzur/ecdna_project/igv_tracks/OZM-054-018-003-cfDNA-2016Jan13_segments_CN.tsv \
+# /path/to/toolkit/calculate_CN_segment.py \
+#     --path_segmentation /path/to/ecdna_project/igv_tracks/sample_segments.tsv \
+#     --path_output /path/to/ecdna_project/igv_tracks/sample_segments_CN.tsv \
 #     --diploid_level -0.707 \
 #     --ctdna_fraction 0.691 
 

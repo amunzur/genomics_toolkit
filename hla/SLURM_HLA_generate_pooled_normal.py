@@ -11,7 +11,7 @@ import re
 import pandas as pd
 
 def main():
-    parser = argparse.ArgumentParser(description="Run AA pipeline.")
+    parser = argparse.ArgumentParser(description="Generate cnvkit pooled normal based on HLA types.")
     parser.add_argument("--path_compiled_hla_types", required=True, help="Path to the file that has all HLA types from all samples compiled into one file.")
     parser.add_argument("--dir_cnn", required=True, help="Abs path to dir where all bams are.")
     parser.add_argument("--path_hg38", required=True, help="The ref genome the cnn files came from.")

@@ -54,7 +54,7 @@ def curate(PATH_muts, DIR_curated_screenshots, path_to_keep, path_to_exclude, PA
     # all_muts = add_timepoint(all_muts, PATH_sample_information)
     
     # subset to pts
-    pts = sample_info["Patient_id"].unique()
+    pts = sample_info["Patient_id"].str.replace("GU-", "").unique()
     all_muts = all_muts[all_muts["Patient_id"].isin(pts)]
     
     if "Sample_name_t" in all_muts.columns:
@@ -73,24 +73,24 @@ def curate(PATH_muts, DIR_curated_screenshots, path_to_keep, path_to_exclude, PA
     muts_to_keep.loc[muts_to_keep["Gene"].str.contains("U2AF"), "Gene"] = "U2AF1"
     
     # exclude oxidative damage patients 
-    chip_oxidative_patients = ["21-307", "21-377"]
-    somatic_oxidative_patients = ["20-313", "21-184", "21-430"]
-    if mut_type == "chip":
-        muts_to_keep = muts_to_keep[~muts_to_keep["Patient_id"].isin(chip_oxidative_patients)]
-    else:
-        muts_to_keep = muts_to_keep[~muts_to_keep["Patient_id"].isin(somatic_oxidative_patients)]    
+    # chip_oxidative_patients = ["21-307", "21-377"]
+    # somatic_oxidative_patients = ["20-313", "21-184", "21-430"]
+    # if mut_type == "chip":
+    #     muts_to_keep = muts_to_keep[~muts_to_keep["Patient_id"].isin(chip_oxidative_patients)]
+    # else:
+    #     muts_to_keep = muts_to_keep[~muts_to_keep["Patient_id"].isin(somatic_oxidative_patients)]    
     del muts_to_keep["IGV_status"]
     del muts_to_exclude["IGV_status"]
     
     # Only keep muts present in the patient id list
-    muts_to_keep = sample_info.merge(muts_to_keep, how = "inner")
+    # muts_to_keep = sample_info.merge(muts_to_keep, how = "inner")
     
     if do_misc_filtering: 
         muts_to_keep = do_misc_filtering_function(muts_to_keep)
     
     muts_to_exclude.to_csv(path_to_exclude, index = False)
     muts_to_keep.to_csv(path_to_keep, index = False)
-
+    
     print(f"Curated variants saved to {path_to_keep}")
 
 def main():
@@ -108,8 +108,10 @@ def main():
     
     # DIR_working = "/groups/wyattgrp/users/amunzur/lu_chip"
     PATH_sample_information = os.path.join(DIR_working, "resources/sample_lists/sample_information.tsv")
-    PATH_muts = os.path.join(DIR_working, f"results/variant_calling/CHIP_SSCS2.csv")
-    PATH_excluded_variants = os.path.join(DIR_working, f"resources/validated_variants/{mutation_type}_to_exclude_IGV.csv")
+    # PATH_muts = os.path.join(DIR_working, f"results/variant_calling/CHIP_SSCS2.csv")
+    PATH_muts="/groups/wyattgrp/users/amunzur/hla_pipeline/results/variant_calling/ctdna_mutations.csv"
+    # PATH_excluded_variants = os.path.join(DIR_working, f"resources/validated_variants/{mutation_type}_to_exclude_IGV.csv")
+    PATH_excluded_variants="/groups/wyattgrp/users/amunzur/pipeline/resources/validated_variants/chip_to_exclude_IGV.csv"
     PATH_retained_variants = os.path.join(DIR_working, f"results/variant_calling/{mutation_type}_SSCS2_curated.csv")
     
     curate(
@@ -129,8 +131,8 @@ if __name__ == "__main__":
 Run example:
 
 python /groups/wyattgrp/users/amunzur/toolkit/STEP4_curate_mutations.py \
-    --mutation_type chip \
-    --DIR_working /groups/wyattgrp/users/amunzur/ironman_ch \
-    --DIR_curated_screenshots /groups/wyattgrp/users/amunzur/ironman_ch/results/figures/IGV_snapshots/CHIP_ironman_curated
+    --mutation_type somatic \
+    --DIR_working /groups/wyattgrp/users/amunzur/hla_pipeline \
+    --DIR_curated_screenshots /groups/wyattgrp/users/amunzur/hla_pipeline/results/figures/IGV_screenshots/non_hla_ctdna_mutations
 
 """
