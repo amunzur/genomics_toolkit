@@ -1,4 +1,4 @@
-#!~/anaconda3/envs/snakemake/bin/python
+#!/home/amunzur/anaconda3/envs/snakemake/bin/python
 # ca snakemake
 
 """
@@ -63,7 +63,7 @@ def main():
         file.write('# Run CNVKIT coverage\n')
         file.write(cnvkit_command)
         
-        print(f"BATCH: {path_sbatch}")
+        print(f"sbatch {path_sbatch}")
 
 if __name__ == "__main__":
     main()

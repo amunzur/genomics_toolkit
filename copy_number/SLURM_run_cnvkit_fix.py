@@ -1,4 +1,4 @@
-#!~/anaconda3/envs/snakemake/bin/python
+#!/home/amunzur/anaconda3/envs/snakemake/bin/python
 
 """
 Given a sample name and path to a pooled normal, runs cnvkit fix on the sample.
@@ -85,7 +85,7 @@ def main():
         file.write(f"{command_plotting_scatter}\n")
         file.write(f"{command_plotting_diagram}\n")
         
-    print(f"BATCH: {path_sbatch}")
+    print(f"sbatch {path_sbatch}")
 
 if __name__ == "__main__":
     main()
