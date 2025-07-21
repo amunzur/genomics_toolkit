@@ -32,7 +32,7 @@ def main():
     dir_output=args.dir_output
     
     sample_name=os.path.basename(path_cnn).replace(".cnn", "")
-    patient_id=re.sub(r'(_cfDNA|_WBC|_FiT).*', '', sample_name)
+    patient_id = re.sub(r'([_-](cfDNA|WBC|FiT)).*', '', sample_name)
     
     if dir_wbc_vcf is not None:
         path_vcf_list=[os.path.join(dir_wbc_vcf, f) for f in os.listdir(dir_wbc_vcf) if patient_id in f and "WBC" in f]
