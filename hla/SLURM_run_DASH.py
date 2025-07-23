@@ -1,84 +1,170 @@
-#!/home/amunzur/anaconda3/envs/snakemake/bin/python
-"""
-For a given list of samples, generate per sample batch scripts to run DASH. This is single sample mode.
-"""
-DIR_hla_pipeline="/groups/wyattgrp/users/amunzur/hla_pipeline"
-/groups/wyattgrp/users/amunzur/toolkit/SLURM_run_DASH.py \
---dir_sequenza ${DIR_hla_pipeline}/results/sequenza_sln/AE-092_cfDNA_Baseline_2015Sep28 \
---path_polysolver_winners ${DIR_hla_pipeline}/results/polysolver/hla_types/AE-092_WBC_Baseline_2015Sep28 \
---normal_fastq ${DIR_hla_pipeline}/results/data/fq/trimmed/AE-092_cfDNA_Baseline_2015Sep28.fq.gz \
---tumor_fastq ${DIR_hla_pipeline}/results/data/fq/trimmed_combined/AE-092_WBC_Baseline_2015Sep28.fq.gz \
---hla_somatic_mutations ${DIR_hla_pipeline}/results/polysolver/hla_mutations/AE-092_cfDNA_Baseline_2015Sep28/hla_mutations \
---normal_read_count ${DIR_hla_pipeline}/results/metrics/trimmed_combined_read_counts/AE-092_WBC_Baseline_2015Sep28.txt \
---tumor_read_count ${DIR_hla_pipeline}/results/metrics/trimmed_combined_read_counts/AE-092_cfDNA_Baseline_2015Sep28.txt \
---all_allele_reference /groups/wyattgrp/users/amunzur/gillian_proj/hla-polysolver/data/abc_complete.fasta \
---model_filename ${DIR_hla_pipeline}/resources/training.xgboost_model.2021_05_10.p \
---output_dir ${DIR_hla_pipeline}/results/dash/AE-092_cfDNA_Baseline_2015Sep28
-
-
 import os
-import sys
+import subprocess
+import pandas as pd
 import argparse
+import sys
 
+"""
+SLURM_run_DASH.py
 
+This script automates the generation of SLURM batch scripts to run the DASH pipeline. 
+My modifications to the original DASH algorith are here: https://github.com/amunzur/DASH
+It prepares and formats necessary inputs such as read counts, purity/ploidy estimates, and HLA types, and then constructs 
+a command to execute the DASH algorithm. A sample-specific SLURM script is created and printed for submission.
 
+Inputs required:
+- Normal (WBC) and tumor FastQ files (combined R1+R2).
+- Output directory (non-sample specific).
+- Directory for writing generated batch scripts.
+
+Major components:
+- Read count fetching for tumor and normal samples.
+- Ploidy and purity lookup from a TSV.
+- Reformatting of LILAC HLA types to Polysolver-compatible format.
+- Creation of a SLURM batch script to run DASH for each sample.
+
+Usage example:
+python SLURM_run_DASH.py \
+    --normal_fastq /path/to/normal.fq.gz \
+    --tumor_fastq /path/to/tumor.fq.gz \
+    --output_dir /path/to/output/dir \
+    --DIR_batch_scripts /path/to/batch_scripts/
+"""
+
+def get_read_counts(sample_name):
+    """
+    Returns number of reads present in the given FastQ file.
+    """
+    dir_read_counts="/groups/wyattgrp/users/amunzur/hla_project/snakemake_hla/results/metrics/trimmed_combined_read_counts"
+    path_nreads=os.path.join(dir_read_counts, sample_name+".txt")
+    
+    if not os.path.exists(path_nreads):
+        raise FileNotFoundError(f"Missing read count file: {path_nreads}")
+    else:
+        with open(path_nreads) as file:
+            lines = [line.rstrip() for line in file]
+    
+    nreads=lines[0]
+    return(nreads)
+
+def return_ploidy_purity(tumor_name, path_sample_purity_ploidy):
+    df=pd.read_csv(path_sample_purity_ploidy, sep="\t")
+    sample_subset=df[df["sample"]==tumor_name]
+    if not df.empty:
+        ploidy=sample_subset["ploidy"].values[0]
+        purity=sample_subset["ctdna"].values[0]
+        return(ploidy, purity)
+    else:
+        raise ValueError(f"Sample not found in the {path_sample_purity_ploidy}.")
+
+def reformat_lilac_hla_types(n_name):
+    """
+    Reformats LILAC's HLA calls to match Polysolver's format. Dash expects HLA calls to be provided in Polysolver's format.
+    n_name is WBC name. No file extensions.
+    """
+    
+    dir_lilac_hla_calls="/groups/wyattgrp/users/amunzur/hla_project/data/lilac"
+    path_lilac_calls=os.path.join(dir_lilac_hla_calls, n_name, n_name+".lilac.tsv")
+    
+    lilac_calls=pd.read_csv(path_lilac_calls, sep="\t")
+    alleles=lilac_calls["Allele"]
+    
+    # Group by locus
+    grouped = alleles.groupby(alleles.str[0])
+    
+    # Format output
+    output_lines = []
+    for gene, group in grouped:
+        hla_gene = f"HLA-{gene}"
+        converted = group.str.lower().str.replace("*", "_").str.replace(":", "_").apply(lambda x: f"hla_{x}")
+        
+        if len(converted) < 2:
+            raise ValueError(f"Less than 2 alleles found for {hla_gene} in {path_lilac_calls}")
+        
+        output_lines.append(f"{hla_gene}\t{converted.iloc[0]}\t{converted.iloc[1]}\n")
+    
+    path_reformatted_output=path_lilac_calls.replace(".lilac.tsv", "_reformatted.lilac.tsv")
+    
+    f = open(path_reformatted_output, "w")
+    f.writelines(output_lines)
+    f.close()
+    
+    return(path_reformatted_output)
 
 def main():
-    # Argument parsing
-    parser = argparse.ArgumentParser(description="Run AA pipeline.")
-    parser.add_argument("--dir_sequenza", required=True, help="DIR to the sample specific sequenza_sln dir.")
-    parser.add_argument("--path_polysolver_winners", required=True, help="Path to the Polysolver winnes.txt file.")
-    parser.add_argument("--normal_fastq", required=True, help="Path to the combined FastQ for the WBC sample.")
-    parser.add_argument("--tumor_fastq", required=True, help="Path to the combined FastQ for the WBC sample")
-    parser.add_argument("--hla_somatic_mutations", required=True, help="DIR to HLA mutations fr")
-    parser.add_argument("--normal_read_count", required=True, help="Outputted VCF will be saved here.")
-    parser.add_argument("--tumor_read_count", required=True, help="Batch script will be written here.")
-    parser.add_argument("--all_allele_reference", required=True, help="Vardict logs will be here.")
-    parser.add_argument("--model_filename", required=True, help="Batch script will be written here.")
-    parser.add_argument("--output_dir", required=True, help="Vardict logs will be here.")
-
+    parser = argparse.ArgumentParser(description="Run the DASH pipeline for HLA LOH detection.")
+    parser.add_argument("--normal_fastq", required=True, help="Path to processed WBC FastQ. Read1 and 2 must be combined into one file.")
+    parser.add_argument("--tumor_fastq", required=True, help="Path to processed tumor FastQ. Read1 and 2 must be combined into one file.")
+    parser.add_argument("--output_dir", required=True, help="A sample directory will be made inside this dir.")
+    parser.add_argument("--DIR_batch_scripts", required=True, help="A sample directory will be made inside this dir.")
+    
     args = parser.parse_args()
     
     if "--help" in sys.argv:
         parser.print_help()
         sys.exit()
     
-    path_hg38=args.path_hg38
-    threshold_min_vaf=args.threshold_min_vaf
-    min_alt_reads=args.min_alt_reads
-    path_bam=args.path_bam
-    path_bed=args.path_bed
-    sample_name=os.path.basename(path_bam).replace(".bam", "")
-    path_output=os.path.join(args.dir_output, sample_name+".vcf")
-    dir_batch_scripts=args.dir_batch_scripts
-    dir_logs=args.dir_logs
-    #
-    path_sbatch=os.path.join(dir_batch_scripts, sample_name+".batch")
-    path_logs=os.path.join(dir_logs, sample_name+".log")
-    if os.path.exists(path_sbatch): os.remove(path_sbatch)
-    jobname = "Vardict"
+    # Generate some of the inputs based on user provided arguments
+    t_name=os.path.basename(args.tumor_fastq).replace(".fq.gz", "")
+    n_name=os.path.basename(args.normal_fastq).replace(".fq.gz", "")
+    
+    normal_read_count = get_read_counts(n_name)
+    tumor_read_count = get_read_counts(t_name)
+    
+    all_allele_reference="/groups/wyattgrp/users/amunzur/hla_project/references/abc_complete.fasta"
+    model_filename="/groups/wyattgrp/users/amunzur/hla_project/resources/training.xgboost_model.2021_05_10.p"
+    sample_output_dir=os.path.join(args.output_dir, t_name)
+    path_lilac_hla_calls=reformat_lilac_hla_types(n_name)
+    
+    dir_hla_mutations=os.path.join(f"/groups/wyattgrp/users/amunzur/hla_pipeline/results/polysolver/hla_mutations/{t_name}/hla_mutations")
+    
+    path_sample_purity_ploidy="/groups/wyattgrp/users/amunzur/hla_project/sample_ploidy.tsv"
+    ploidy, purity=return_ploidy_purity(t_name, path_sample_purity_ploidy)
+    
+    DIR_log="/groups/wyattgrp/users/amunzur/hla_project/logs/run_dash"
+    
+    dash_cmd = "python /groups/wyattgrp/users/amunzur/hla_pipeline/software/DASH/Algorithm/DASH.manuscript.py " + \
+           "--path_polysolver_winners {} ".format(path_lilac_hla_calls) + \
+           "--ploidy {} ".format(ploidy) + \
+           "--purity {} ".format(purity) + \
+           "--normal_fastq {} ".format(args.normal_fastq) + \
+           "--tumor_fastq {} ".format(args.tumor_fastq) + \
+           "--hla_somatic_mutations {} ".format(dir_hla_mutations) + \
+           "--normal_read_count {} ".format(normal_read_count) + \
+           "--tumor_read_count {} ".format(tumor_read_count) + \
+           "--all_allele_reference {} ".format(all_allele_reference) + \
+           "--model_filename {} ".format(model_filename) + \
+           "--output_dir {} ".format(sample_output_dir)
+    
+    job_name = "DASH_{}".format(t_name)
+    
+    # Generate a batch script for each sample
+    batch_script_path = os.path.join(args.DIR_batch_scripts, t_name + "_run_DASH.bash")
+    # subprocess.call("rm " + batch_script_path)
+    with open(batch_script_path, 'w') as batch_file:
+        batch_file.write('#!/bin/bash\n')
+        batch_file.write('#SBATCH --job-name={}\n'.format(job_name))
+        batch_file.write('#SBATCH --output={}/{}.log\n'.format(DIR_log, t_name))
+        batch_file.write('#SBATCH --error={}/{}.log\n'.format(DIR_log, t_name))
+        batch_file.write('#SBATCH --time=5:00:00\n')
+        batch_file.write('#SBATCH --mem=16G\n')
+        batch_file.write('#SBATCH --cpus-per-task=4\n')
+        batch_file.write('export MPLCONFIGDIR=/groups/wyattgrp/users/amunzur/matplotlib_cache\n')
+        batch_file.write('source /home/amunzur/anaconda3/etc/profile.d/conda.sh\n')
+        batch_file.write('conda activate dash\n')
+        batch_file.write(dash_cmd)
+    
+    slurm_cmd = f"sbatch {batch_script_path}"
+    print(slurm_cmd)
 
-    with open(path_sbatch, 'a') as file:
-        file.write('#!/bin/bash\n')
-        file.write(f'#SBATCH --job-name={jobname}\n')
-        file.write('#SBATCH --cpus-per-task=4\n')
-        file.write('#SBATCH --mem=4G\n')
-        file.write('#SBATCH --time=30:00\n')
-        file.write(f'#SBATCH --error {path_logs}\n')
-        file.write(f'#SBATCH --output {path_logs}\n')
-        file.write('\n')
-        file.write('# Run Vardict\n')
-        file.write(f'/home/jbacon/mambaforge/envs/pipeline/bin/vardict-java \
-                   -G {path_hg38} \
-                    -f {threshold_min_vaf} \
-                    -N {sample_name} \
-                    -r {min_alt_reads} \
-                    -b {path_bam} \
-                    -k 0 -c 1 -S 2 -E 3 -g 4 {path_bed} | \
-                    /home/amunzur/VarDictJava/build/install/VarDict/bin/teststrandbias.R | \
-                    /home/amunzur/VarDictJava/build/install/VarDict/bin/var2vcf_valid.pl > {path_output}')
-        print(f"sbatch {path_sbatch}")
 
 if __name__ == "__main__":
     main()
+
+# Run example
+# /groups/wyattgrp/users/amunzur/toolkit/hla/SLURM_run_DASH.py \
+# --normal_fastq path/to/fastq \
+# --tumor_fastq path/to/fastq \
+# --output_dir path/to/dir_output \ # Should not be sample specific
+# --DIR_batch_scripts path/to/batch \ 
 
