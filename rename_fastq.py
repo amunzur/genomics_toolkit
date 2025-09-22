@@ -22,6 +22,11 @@ python /path/to/toolkit/rename_fastq.py \
 --script_path /path/to/workflow/batch_scripts/rename_fastq/rename_dec27_run.bash \
 --dry_run
 
+Barcode sheet can be a tsv or csv file. It must contain these three colums: Sequencing_ID, Barcode, GSC Pool ID
+- Sequencing_ID will be the new sample name.
+- Barcode is GSC assigned sequencing barcode.
+- GSC Pool ID: This is the pool identifier, usually something like PX3713. The raw sample names also have this identifier at the beginning of the file name.
+
 '''
 
 def find_fastq_files(DIR_data): 
@@ -49,7 +54,7 @@ def get_reverse_compliment(some_fastq):
     This function identifies the reverse compliment of the second part of the barcode and returns a complete new file name as string.
     '''
     base_name = os.path.basename(some_fastq)
-    seq_id = base_name.split("_")[3].split("-")[1] # Extract the part you need for reverse complimenting
+    seq_id = base_name.split("_")[1].split("-")[1] # Extract the part you need for reverse complimenting, usually i5 (second index after -) needs to be reverse complimented.
     id_reverse = seq_id[::-1] # reverse
     mydict = {'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C'} # dict to take the reverse 
     id_reverse_compliment = []
@@ -64,20 +69,18 @@ def get_reverse_compliment(some_fastq):
     
     # replace the id in the fastq name with the reverse compliment 
     base_name_modified = base_name.replace(seq_id, id_reverse_compliment)
-    reverse_compliment_barcode=base_name_modified.split("_")[3]
+    reverse_compliment_barcode=base_name_modified.split("_")[1]
     return(reverse_compliment_barcode)
 
 def get_sequencing_id(some_fastq, barcode_sheet, reverse_compliment = False):
     '''
     Given a file path to a fastq file with barcodes, scan the barcodes sheet to find its sequencing ID and return it as a string.
-    barcode_sheet should be a csv file.
+    barcode_sheet could be a csv or tsv file.
     '''
     if barcode_sheet.endswith(".tsv"):
         df_barcodes = pd.read_csv(barcode_sheet, sep = "\t")
     elif barcode_sheet.endswith(".csv"): 
         df_barcodes = pd.read_csv(barcode_sheet)
-    
-    barcode = find_barcode(some_fastq.split("_"))
     
     # Sometimes if the whole lane is used or something like that the file naming is slightly different.
     if not some_fastq.endswith("merge.fastq.gz"):
@@ -90,6 +93,9 @@ def get_sequencing_id(some_fastq, barcode_sheet, reverse_compliment = False):
     
     if reverse_compliment: 
         barcode = get_reverse_compliment(some_fastq)
+    else:
+        barcode = find_barcode(some_fastq.split("_"))
+    
     seq_id_list = df_barcodes[(df_barcodes["Barcode"] == barcode) & (df_barcodes["GSC Pool ID"] == pool)]["Sequencing_ID"]
     
     if len(seq_id_list) > 1: 
@@ -98,7 +104,7 @@ def get_sequencing_id(some_fastq, barcode_sheet, reverse_compliment = False):
         raise ValueError(f"The barcode {barcode} from {os.path.basename(some_fastq)} didn't match any sample.")
     else:
         seq_id = seq_id_list.values[0]
-
+    
     # Add suffix for R1 or R2
     seq_id += suffix
     
