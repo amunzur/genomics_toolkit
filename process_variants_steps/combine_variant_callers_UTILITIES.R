@@ -16,7 +16,7 @@ identify_varcaller <- function(combined, varcaller_df, varcaller_name){
 	return(combined)
 }
 
-identify_varcaller_WBC_only <- function(combined, varcaller_df, varcaller_name){
+identify_varcaller_unpaired <- function(combined, varcaller_df, varcaller_name){
 
 	# select cols to avoid duplication after merge
 	varcaller_df <- varcaller_df %>%
@@ -58,7 +58,7 @@ combine_variant_callers <- function(df_list, additional_args = list()) {
   return(combined)
 }
 
-combine_variant_callers_WBC_only_calls <- function(df_list, additional_args = list()) {
+combine_variant_callers_unpaired_calls <- function(df_list, additional_args = list()) {
   # Combine all input data frames
   combined <- dplyr::bind_rows(df_list) %>%
     dplyr::distinct(Sample_name, Chrom, Position, Ref, Alt, Gene, Protein_annotation, .keep_all = TRUE)
@@ -67,7 +67,7 @@ combine_variant_callers_WBC_only_calls <- function(df_list, additional_args = li
   caller_names <- list()
   for (df in df_list) {
     caller_name <- unique(df$Variant_caller)
-    combined <- identify_varcaller_WBC_only(combined, df, caller_name)
+    combined <- identify_varcaller_unpaired(combined, df, caller_name)
 	caller_names <- append(caller_names, caller_name)
   }
 
@@ -82,7 +82,7 @@ combine_variant_callers_WBC_only_calls <- function(df_list, additional_args = li
   combined <- cbind(combined, as.data.frame(counts_df))
   combined$n_callers <- counts_vector
   
-  combined<-filter(combined, Sample_type=="WBC")
+  # combined<-filter(combined, Sample_type=="WBC")
 
   return(combined)
 }
@@ -103,13 +103,13 @@ add_bam_path <- function(variant_df, DIR_bams){
     return(variant_df)
 }
 
-add_bam_path_WBC_only <- function(variant_df, DIR_bams){
+add_bam_path_unpaired <- function(variant_df, DIR_bams){
 
     PATH_wbc_bam <- file.path(DIR_bams, paste0(variant_df$Sample_name, ".bam"))
 
     variant_df <- variant_df %>% 
-        mutate(Path_bam_n = PATH_wbc_bam) %>% 
-        relocate(Path_bam_n, .after = Sample_name)
+        mutate(Path_bam = PATH_wbc_bam) %>% 
+        relocate(Path_bam, .after = Sample_name)
 
     return(variant_df)
 }
