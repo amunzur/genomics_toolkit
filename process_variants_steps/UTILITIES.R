@@ -406,7 +406,7 @@ combine_tumor_wbc <- function(vars, path_paired_samples){
 	variant_cols <- c("Patient_id", "Chrom", "Position", "Ref", "Alt", "Type",
                   "Function", "Gene", "Consequence", "AAchange", 
                   "Protein_annotation", "Effects", "cosmic97_coding", 
-                  "avsnp150", "CLNALLELEID", "CLNSIG", "Variant_caller")
+                  "avsnp150", "CLNALLELEID", "CLNSIG")
 	
 	combined <- inner_join(tumor, wbc, by = variant_cols, suffix = c("_t", "_n"))
 
@@ -588,7 +588,7 @@ parse_anno_output <- function(DIR_variant_tables, mode, variant_caller, PATH_sam
 	anno_df <- as.data.frame(do.call(rbind, anno_df_list))
 	
 	# Add the patient ID
-	x <- str_split(anno_df$Sample_name, "_gDNA|_WBC|_cfDNA")
+	x <- str_split(anno_df$Sample_name, "_gDNA|_WBC|_cfDNA|_utDNA")
 	anno_df$Patient_id <- unlist(lapply(x, "[", 1))
 	anno_df$Patient_id <- gsub("GU-|GUBB-", "", anno_df$Patient_id)
 	anno_df <- anno_df %>% select(Patient_id, everything()) # Move to first col
