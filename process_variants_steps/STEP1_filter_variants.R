@@ -8,12 +8,14 @@ parser$add_argument('--caller', type = 'character', required = TRUE, help = 'Cal
 parser$add_argument('--type', type = 'character', required = TRUE, help = 'Type (chip or somatic)')
 parser$add_argument('--combine_tumor_and_wbc', type = 'character', required = TRUE, help = 'Boolean')
 parser$add_argument('--min_alt_reads', type = 'integer', required = TRUE, help = 'Mininum number of alt reads')
-parser$add_argument('--match_cfDNA_and_WBC_dates', type = 'character', required = TRUE, help = 'When combining cfDNA and WBC, do the dates need to match exactly?')
 parser$add_argument('--forced_rerun', type = 'character', required = TRUE, help = 'Boolean.')
 parser$add_argument('--working_dir', type = 'character', required = TRUE, help = 'Working directory where outputs will be saved.')
 parser$add_argument('--exclude_nonpathogenic_germline', action = 'store_true', help = 'Flag to set exclude_nonpathogenic_germline to TRUE if provided.')
 parser$add_argument('--do_not_impose_vaf_upper_limit', action = 'store_true', help = 'Flag to set do_not_impose_vaf_upper_limit to TRUE if provided. Does not filter based on VAF in CH mutation calling.')
 parser$add_argument('--keyword_for_output_files', type = 'character', required = FALSE, help = 'Output files will have this keyword if provided by user.')
+parser$add_argument('--PATH_sample_list', type = 'character', required = FALSE, help = 'Paired WBC cfDNA samples list, tab delim file. Each row has one sample pair.')
+parser$add_argument('--PATH_bg', type = 'character', required = FALSE, help = 'CH background error rate file.')
+parser$add_argument('--PATH_bg_ctDNA', type = 'character', required = FALSE, help = 'ctDNA background error rate file.')
 
 args <- parser$parse_args()
 
@@ -27,13 +29,15 @@ if (is.null(args$consensus)) {
 variant_caller <- args$caller
 type <- args$type
 min_alt_reads <- args$min_alt_reads
-match_cfDNA_and_WBC_dates <- args$match_cfDNA_and_WBC_dates
 working_dir <- args$working_dir
 combine_tumor_and_wbc <- tolower(args$combine_tumor_and_wbc) == 'true'
 forced_rerun <- tolower(args$forced_rerun) == 'true'
 exclude_nonpathogenic_germline <- args$exclude_nonpathogenic_germline
 do_not_impose_vaf_upper_limit <- args$do_not_impose_vaf_upper_limit
 keyword_for_output_files <- args$keyword_for_output_files
+PATH_sample_list <- args$PATH_sample_list
+PATH_bg <- args$PATH_bg
+PATH_bg_ctDNA <- args$PATH_bg_ctDNA
 
 # Print arguments (for testing purposes)
 cat("Consensus:", consensus, "\n")
@@ -41,7 +45,6 @@ cat("Caller:", variant_caller, "\n")
 cat("Type:", type, "\n")
 cat("combine_tumor_and_wbc:", combine_tumor_and_wbc, "\n")
 cat("min_alt_reads:", min_alt_reads, "\n")
-cat("match_cfDNA_and_WBC_dates:", match_cfDNA_and_WBC_dates, "\n")
 cat("forced_rerun:", forced_rerun, "\n")
 cat("working_dir:", working_dir, "\n")
 cat("Keyword for output files:", keyword_for_output_files, "\n")
@@ -62,10 +65,12 @@ if (toupper(variant_caller) == "FREEBAYES") {
 #             --type chip \
 #             --combine_tumor_and_wbc FALSE \
 #             --min_alt_reads 5 \
-#			  --match_cfDNA_and_WBC_dates FALSE \
 #             --forced_rerun FALSE \
 #             --working_dir /groups/wyattgrp/users/amunzur/lu_chip/results \
-#			  --keyword_for_output_files WBConly"
+#			  --keyword_for_output_files WBConly \
+#			  --PATH_sample_list /groups/wyattgrp/users/amunzur/hla_pipeline/resources/sample_lists/paired_samples.tsv \
+#			  --PATH_bg /groups/wyattgrp/users/jbacon/err_rates/chip_panel_CHIP/error_rate/error_rates.tsv \
+#			  --PATH_bg_ctDNA /groups/wyattgrp/users/amunzur/pipeline/resources/bg_error_rate/bgerror/error_rates_ctDNA.tsv
 
 library(tidyverse)
 library(stringr)
@@ -76,24 +81,26 @@ library(tools)
 library(zoo)
 
 setwd(working_dir)
-source("/groups/wyattgrp/users/amunzur/toolkit/UTILITIES.R")
+source("/groups/wyattgrp/users/amunzur/toolkit/process_variants_steps/UTILITIES.R")
 
 # PATH_sample_list <- sprintf("../resources/sample_lists/paired_samples.tsv") # must be paired
-PATH_sample_list <- "/groups/wyattgrp/users/amunzur/hla_pipeline/resources/sample_lists/paired_samples.tsv"
-DIR_mpileup <- sprintf("metrics/mpileup/%s", consensus)
-PATH_bg <- "/groups/wyattgrp/users/jbacon/err_rates/chip_panel_CHIP/error_rate/error_rates.tsv"
+# PATH_sample_list <- "/groups/wyattgrp/users/amunzur/hla_pipeline/resources/sample_lists/paired_samples.tsv"
+# PATH_bg <- "/groups/wyattgrp/users/jbacon/err_rates/chip_panel_CHIP/error_rate/error_rates.tsv"
 # PATH_bg_ctDNA <- "/groups/wyattgrp/users/amunzur/pipeline/resources/bg_error_rate/bgerror/error_rates_ctDNA.tsv"
-PATH_bg_ctDNA <- "/groups/wyattgrp/users/amunzur/hla_pipeline/resources/error_rates/error_rate/error_rates.tsv"
+# PATH_bg_ctDNA <- "/groups/wyattgrp/users/amunzur/hla_pipeline/resources/error_rates/error_rate/error_rates.tsv"
 
 # PATH_sample_information <- "../resources/sample_lists/sample_information.tsv"
-PATH_sample_information <- "/groups/wyattgrp/users/amunzur/hla_pipeline/resources/sample_lists/sample_information.tsv"
-PATH_blacklist <- "/groups/wyattgrp/users/amunzur/pipeline/resources/validated_variants/blacklisted_variants.csv"
+# PATH_sample_information <- "/groups/wyattgrp/users/amunzur/hla_pipeline/resources/sample_lists/sample_information.tsv"
 
 # if (!exists(PATH_sample_list)) {
 #   PATH_sample_list <- NULL
 # }
 
 # PATH_sample_list <- NULL
+
+DIR_mpileup <- sprintf("metrics/mpileup/%s", consensus)
+PATH_blacklist <- "/groups/wyattgrp/users/amunzur/pipeline/resources/validated_variants/blacklisted_variants.csv"
+
 chroms <- paste0("chr", c(as.character(1:22), "X", "Y"))
 bg <- read_delim(PATH_bg, delim = "\t", col_types = cols(CHROM = col_character())) %>%
 	  filter(CHROM %in% chroms)
@@ -166,7 +173,7 @@ if (!dir.exists(sprintf("variant_calling/%s/finalized/%s", variant_caller, conse
 if (toupper(type) == "CHIP"){
 	if (forced_rerun || !file.exists(PATH_before_filtering)) {
 		vars <- parse_anno_output(DIR_variant_tables_chip, "chip", variant_caller, PATH_sample_list = PATH_sample_list)
-		vars <- add_patient_information(vars, PATH_sample_information)
+		# vars <- add_patient_information(vars, PATH_sample_information)
 		vars <- add_bg_error_rate(vars, bg)
 		vars <- add_AAchange_effect(vars, variant_caller)
 		vars <- evaluate_strand_bias2(vars)
@@ -182,7 +189,7 @@ if (toupper(type) == "CHIP"){
 	write_csv(vars, PATH_after_filtering)
 	
 	if (combine_tumor_and_wbc) {
-		vars <- combine_tumor_wbc(vars, match_cfDNA_and_WBC_dates)
+		vars <- combine_tumor_wbc(vars, PATH_sample_list)
 		vars <- filter(vars, Strand_bias_fishers_n != TRUE & Strand_bias_fishers_t != TRUE)
 	} else {
 		vars <- filter(vars, Strand_bias_fishers != TRUE)
@@ -194,7 +201,7 @@ if (toupper(type) == "CHIP"){
 } else if (toupper(type) == "SOMATIC") {
 	if (forced_rerun || !file.exists(PATH_before_filtering_somatic)) {
 		vars <- parse_anno_output(DIR_variant_tables_somatic, "somatic", variant_caller, PATH_sample_list = PATH_sample_list)
-		vars <- add_patient_information_somatic(vars, PATH_sample_information)
+		# vars <- add_patient_information_somatic(vars, PATH_sample_information)
 		vars <- add_bg_error_rate(vars, bg_ctDNA)
 		vars <- add_AAchange_effect(vars, variant_caller)
 		vars <- evaluate_strand_bias2(vars)
