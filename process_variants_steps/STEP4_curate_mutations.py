@@ -71,25 +71,30 @@ def curate(PATH_muts, DIR_curated_screenshots, path_to_keep, path_to_exclude, mu
 def main():
     parser = argparse.ArgumentParser(description="Curate mutations after IGV review.")
     parser.add_argument("--mutation_type", required=True, choices=["chip", "somatic"], help="Specify mutation type: chip or somatic.")
-    parser.add_argument("--do_misc_filtering", action="store_true", help="Perform additional filtering.")
-    parser.add_argument("--DIR_working", required=True, help="")
-    parser.add_argument("--DIR_curated_screenshots", required=True, help="")
+    parser.add_argument("--DIR_curated_screenshots", required=True, help="Directory containing IGV screenshots.")
+    parser.add_argument("--DIR_working", default="/groups/wyattgrp/users/amunzur/rumble/Clonal-hematopoiesis-pipeline", help="Working directory. Defaults to standard pipeline path.")
+    parser.add_argument("--PATH_muts", default=None, help="Path to the mutations CSV. Overrides default if provided.")
+    parser.add_argument("--path_to_keep", default=None, help="Path to save curated variants. Overrides default if provided.")
+    parser.add_argument("--path_to_exclude", default=None, help="Path to save excluded variants. Overrides default if provided.")
+    parser.add_argument("--do_misc_filtering", action="store_true", help="Perform additional filtering (VAF ratio, LPAR6 removal).")
+    
     args = parser.parse_args()
     
-    DIR_working = args.DIR_working
     mutation_type = args.mutation_type.lower()
+    DIR_working = args.DIR_working
+    DIR_curated_screenshots = args.DIR_curated_screenshots
     do_misc_filtering = args.do_misc_filtering
-    DIR_curated_screenshots=args.DIR_curated_screenshots
     
-    PATH_muts = os.path.join(DIR_working, f"results/variant_calling/{mutation_type}_SSCS2.csv")
-    PATH_retained_variants = os.path.join(DIR_working, f"results/variant_calling/{mutation_type}_SSCS2_curated.csv")
-    PATH_excluded_variants = os.path.join(DIR_working, f"resources/validated_variants/{mutation_type}_to_exclude_IGV.csv")
-        
+    # define default paths if user did not provide them
+    PATH_muts = args.PATH_muts or os.path.join(DIR_working, f"results/variant_calling/{mutation_type}_SSCS2.csv")
+    path_to_keep = args.path_to_keep or os.path.join(DIR_working, f"results/variant_calling/{mutation_type}_SSCS2_curated.csv")
+    path_to_exclude = args.path_to_exclude or os.path.join(DIR_working, f"resources/validated_variants/{mutation_type}_to_exclude_IGV.csv")
+    
     curate(
         PATH_muts=PATH_muts,
         DIR_curated_screenshots=DIR_curated_screenshots,
-        path_to_keep=PATH_retained_variants,
-        path_to_exclude=PATH_excluded_variants,
+        path_to_keep=path_to_keep,
+        path_to_exclude=path_to_exclude,
         mut_type=mutation_type,
         do_misc_filtering=do_misc_filtering,
     )
