@@ -105,9 +105,18 @@ if __name__ == "__main__":
 """
 Run example:
 
-python /groups/wyattgrp/users/amunzur/toolkit/STEP4_curate_mutations.py \
-    --mutation_type somatic \
-    --DIR_working /groups/wyattgrp/users/amunzur/hla_pipeline \
-    --DIR_curated_screenshots /groups/wyattgrp/users/amunzur/hla_pipeline/results/figures/IGV_screenshots/non_hla_ctdna_mutations
+# Using all default paths derived from DIR_working and mutation_type
+python STEP4_curate_mutations.py \
+    --mutation_type chip \
+    --DIR_curated_screenshots /groups/wyattgrp/users/amunzur/rumble/figures/igv_snapshots/urine_wbc_matched
+
+# Overriding all paths explicitly
+python STEP4_curate_mutations.py \
+    --mutation_type chip \
+    --DIR_curated_screenshots /groups/wyattgrp/users/amunzur/rumble/figures/igv_snapshots/urine_wbc_matched \
+    --PATH_muts /path/to/ch_mutations_no_UL.csv \
+    --path_to_keep /path/to/ch_mutations_no_UL_curated.csv \
+    --path_to_exclude /path/to/excluded/ch_mutations_no_UL_excluded.csv \
+    --do_misc_filtering
 
 """
