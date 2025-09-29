@@ -8,32 +8,6 @@ import argparse
 After curating mutations by going through IGV snapshots, this script detects which mutations have been removed, and then adds them to the blacklist.
 """
 
-# DIR_working = "/groups/wyattgrp/users/amunzur/lu_chip"
-# mutation_type = user provides chip or somatic
-# do_misc_filtering = False or True provided
-
-# mutation_type = mutation_type.upper()
-# PATH_sample_information = os.path.join(DIR_working, "resources/sample_lists/sample_information.tsv")
-
-# PATH_muts = os.path.join(DIR_working, f"results/figures/IGV_snapshots/{mutation_type}")
-# DIR_curated_muts = os.path.join(DIR_working, f"results/figures/IGV_snapshots/{mutation_type}")
-# PATH_excluded_variants = os.path.join(DIR_working, f"resources/validated_variants/{mutation_type}_to_exclude_IGV.csv")
-# PATH_retained_variants = os.path.join(DIR_working, f"results/variant_calling/{mutation_type}_SSCS2_curated.csv")
-
-# def add_timepoint(all_muts, PATH_sample_information):
-#     # Add the correct time point, some are problematic
-#     sample_info = pd.read_csv(PATH_sample_information, sep = "\t", names = ["Patient_id", "Date_collected", "Diagnosis", "Timepoint"])
-#     del all_muts["Timepoint"]
-#     all_muts = all_muts.merge(sample_info, how = "inner")
-#     # reorder cols
-#     columns = list(all_muts.columns)
-#     timepoint_index = columns.index('Timepoint')
-#     date_collected_index = columns.index('Date_collected')
-#     columns.pop(timepoint_index)
-#     columns.insert(date_collected_index + 1, 'Timepoint')
-#     all_muts = all_muts[columns]
-#     return(all_muts)
-
 def do_misc_filtering_function(df):
     """
     Performs additional filtering by removing variants based on ratio between cfDNA and WBC VAF,
@@ -46,16 +20,16 @@ def do_misc_filtering_function(df):
     
     return(df)
 
-def curate(PATH_muts, DIR_curated_screenshots, path_to_keep, path_to_exclude, PATH_sample_information, mut_type, do_misc_filtering): 
+def curate(PATH_muts, DIR_curated_screenshots, path_to_keep, path_to_exclude, mut_type, do_misc_filtering): 
     
-    sample_info = pd.read_csv(PATH_sample_information, sep = "\t", names = ["Patient_id", "Date_collected", "Diagnosis", "Timepoint"])[["Patient_id", "Diagnosis"]].drop_duplicates()
+    # sample_info = pd.read_csv(PATH_sample_information, sep = "\t", names = ["Patient_id", "Date_collected", "Diagnosis", "Timepoint"])[["Patient_id", "Diagnosis"]].drop_duplicates()
     all_muts = pd.read_csv(PATH_muts)
-    all_muts.loc[all_muts["Diagnosis"] == "Kidney During treatment", "Diagnosis"] = "Kidney"
+    # all_muts.loc[all_muts["Diagnosis"] == "Kidney During treatment", "Diagnosis"] = "Kidney"
     # all_muts = add_timepoint(all_muts, PATH_sample_information)
     
     # subset to pts
-    pts = sample_info["Patient_id"].str.replace("GU-", "").unique()
-    all_muts = all_muts[all_muts["Patient_id"].isin(pts)]
+    # pts = sample_info["Patient_id"].str.replace("GU-", "").unique()
+    # all_muts = all_muts[all_muts["Patient_id"].isin(pts)]
     
     if "Sample_name_t" in all_muts.columns:
         all_muts["IGV_screenshot_name"] = all_muts.apply(lambda row: "_".join(map(str, row[['Gene', 'Protein_annotation', 'Chrom', 'Position', 'Sample_name_t']])), axis=1) + ".png" # all called muts
@@ -92,6 +66,7 @@ def curate(PATH_muts, DIR_curated_screenshots, path_to_keep, path_to_exclude, PA
     muts_to_keep.to_csv(path_to_keep, index = False)
     
     print(f"Curated variants saved to {path_to_keep}")
+    print(f"Excluded variants saved to {path_to_exclude}")
 
 def main():
     parser = argparse.ArgumentParser(description="Curate mutations after IGV review.")
@@ -102,24 +77,19 @@ def main():
     args = parser.parse_args()
     
     DIR_working = args.DIR_working
-    mutation_type = args.mutation_type.upper()
+    mutation_type = args.mutation_type.lower()
     do_misc_filtering = args.do_misc_filtering
     DIR_curated_screenshots=args.DIR_curated_screenshots
     
-    # DIR_working = "/groups/wyattgrp/users/amunzur/lu_chip"
-    PATH_sample_information = os.path.join(DIR_working, "resources/sample_lists/sample_information.tsv")
-    # PATH_muts = os.path.join(DIR_working, f"results/variant_calling/CHIP_SSCS2.csv")
-    PATH_muts="/groups/wyattgrp/users/amunzur/hla_pipeline/results/variant_calling/ctdna_mutations.csv"
-    # PATH_excluded_variants = os.path.join(DIR_working, f"resources/validated_variants/{mutation_type}_to_exclude_IGV.csv")
-    PATH_excluded_variants="/groups/wyattgrp/users/amunzur/pipeline/resources/validated_variants/chip_to_exclude_IGV.csv"
+    PATH_muts = os.path.join(DIR_working, f"results/variant_calling/{mutation_type}_SSCS2.csv")
     PATH_retained_variants = os.path.join(DIR_working, f"results/variant_calling/{mutation_type}_SSCS2_curated.csv")
-    
+    PATH_excluded_variants = os.path.join(DIR_working, f"resources/validated_variants/{mutation_type}_to_exclude_IGV.csv")
+        
     curate(
         PATH_muts=PATH_muts,
         DIR_curated_screenshots=DIR_curated_screenshots,
         path_to_keep=PATH_retained_variants,
         path_to_exclude=PATH_excluded_variants,
-        PATH_sample_information=PATH_sample_information,
         mut_type=mutation_type,
         do_misc_filtering=do_misc_filtering,
     )
