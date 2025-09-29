@@ -1,31 +1,56 @@
+
 # Script to make IGV snapshots with tumor and WBC bams shown together. 
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+
+# For tumor + WBC BAMs:
+# python make_igv_snapshots.py \
+#   --path_variants /path/to/variants.csv \
+#   --PATH_batch /path/to/output_batch.txt \
+#   --DIR_snapshots /path/to/snapshots \
+#   --prefix "" \
+#   --suffix "" \
+#   --given_range 100
+
+# For WBC-only BAMs:
+# python make_igv_snapshots.py \
+#   --path_variants /path/to/wbc_variants.csv \
+#   --PATH_batch /path/to/output_batch_wbc.txt \
+#   --DIR_snapshots /path/to/snapshots_wbc \
+#   --wbc-only \
+#   --given_range 200
+
 """
 Created on Thu May 27 13:45:38 2021
 @author: amunzur
 """
 import os
 import pandas as pd
+import argparse
 
-def make_igv_batch_script(
-	df, 
-	PATH_batch, 
-	DIR_snapshots, 
-	add_prefix, 
-	add_suffix, 
-	given_range, 
-	WBC_only):
-	for index, row in df.iterrows(): # iterate through each snv in the maf
-		if WBC_only: 
-			BAM_wbc = str(add_prefix + str(row["Path_bam_n"])+ add_suffix)		
-		else:
-			BAM_wbc = str(add_prefix + str(row["Path_bam_n"])+ add_suffix)		
-			BAM_tumor = str(add_prefix + str(row["Path_bam_t"]) + add_suffix)
+def apply_prefix_suffix(path, prefix, suffix):
+	"""
+	Apply optional prefix and/or suffix to a given file path.
+	"""
+    if prefix:
+        path = str(prefix) + str(path)
+    if suffix:
+        path = str(path) + str(suffix)
+    return path
+
+def make_igv_batch_script(df, PATH_batch, DIR_snapshots, prefix, suffix, given_range, WBC_only):
+	"""
+	Generate an IGV batch script to create snapshots of tumor and/or WBC BAM files.
+	"""
+	for index, row in df.iterrows(): # iterate through each snv in the variants file
+		BAM_wbc = apply_prefix_suffix(row["Path_bam_n"], prefix, suffix)
+		if not WBC_only:
+    		BAM_tumor = apply_prefix_suffix(row["Path_bam_t"], prefix, suffix)
+		
 		position = int(row["Position"])
+		
 		if given_range: # if the user wants to see a given range, consider the end position of the range as well
 			start_position = str(int(position - given_range/2))
 			end_position = str(int(position + given_range/2))	
+		
 		# os.remove(IGV_script)
 		os.makedirs(DIR_snapshots, exist_ok = True) # make the snapshost dir if it doesnt exist already
 		if WBC_only:
@@ -50,30 +75,55 @@ def make_igv_batch_script(
 			the_file.write('maxPanelHeight -1\n')
 			the_file.write(str('snapshot ' + output_file_name + '\n'))
 			the_file.write("\n")
-	with open(PATH_batch, 'a') as the_file: the_file.write('exit') # append an exist statement at the end so that IGV closes on its own
+	with open(PATH_batch, 'a') as the_file: the_file.write('exit') # append an exit statement at the end so that IGV closes on its own
 	print("/home/amunzur/IGV_Linux_2.11.3/igv.sh --batch ", PATH_batch) # print the exact command needed to turn IGV to terminal
 
-PATH_variants_df = "/groups/wyattgrp/users/amunzur/hla_pipeline/results/variant_calling/ctdna_mutations.csv" # variants csv file
-PATH_batch = "/groups/wyattgrp/users/amunzur/hla_pipeline/workflow/scripts/batch_scripts/IGV_batch_ctdna_mutations.txt" # where the batch script is saved
-DIR_snapshots = "/groups/wyattgrp/users/amunzur/hla_pipeline/results/figures/IGV_snapshots" # dir where snapshots will be saved
-given_range = 100
-add_prefix = "" # if .bam suffix needs to be added 
-add_suffix = ""
+def main():
+    parser = argparse.ArgumentParser(description="Generate IGV batch script for tumor + WBC BAM visualization")
+    parser.add_argument("--path_variants", required=True, help="Path to variants CSV file")
+    parser.add_argument("--PATH_batch", required=True, help="Output path for IGV batch script")
+    parser.add_argument("--DIR_snapshots", required=True, help="Directory where snapshots will be saved")
+	parser.add_argument("--prefix", help="Prefix to add to BAM paths (optional)")
+	parser.add_argument("--suffix", help="Suffix to add to BAM paths (optional)")
+    parser.add_argument("--given_range",type=int,default=200,help="Genomic range around the position to display")
+    parser.add_argument("--WBC_only",action="store_true",help="If set, only load WBC BAMs (no tumor BAMs)")
+    args = parser.parse_args()
+	
+    # Remove old batch file if it exists
+    try:
+        os.remove(args.PATH_batch)
+    except FileNotFoundError:
+        pass
 
-df = pd.read_csv(PATH_variants_df)[["Patient_id", "Protein_annotation", "Gene", "Chrom", "Position", "Sample_name_t", "Path_bam_t", "Path_bam_n"]] # assuming these cols exist in the variants file
-# df["Path_bam_n"]="/groups/wyattgrp/users/amunzur/lu_chip/results/bam/SSCS2_final/"+df["Sample_name"]+".bam"
+    # Load dataframe
+    df = pd.read_csv(args.path_variants)
 
-try:
-	os.remove(PATH_batch)
-except:
-	print("Error while deleting batch files")
+    # Ensure required columns exist
+    required_cols = (
+        ["Patient_id", "Protein_annotation", "Gene", "Chrom", "Position", "Path_bam_n"]
+        if args.WBC_only
+        else [
+            "Patient_id",
+            "Protein_annotation",
+            "Gene",
+            "Chrom",
+            "Position",
+            "Sample_name_t",
+            "Path_bam_t",
+            "Path_bam_n",
+        ]
+    )
+    df = df[required_cols]
 
-make_igv_batch_script(df, PATH_batch, DIR_snapshots, add_prefix, add_suffix, given_range, WBC_only = False)
+    make_igv_batch_script(
+        df,
+        args.PATH_batch,
+        args.DIR_snapshots,
+        args.prefix,
+        args.suffix,
+        args.given_range,
+        args.WBC_only,
+    )
 
-# For progression cfDNA only mutations
-path="/groups/wyattgrp/users/amunzur/ironman_ch/results/variant_calling/CHIP_SSCS2.csv"
-df = pd.read_csv(path)
-df = progression_only[["Patient_id", "Protein_annotation", "Gene", "Chrom", "Position", "Sample_name", "bam_path"]] # assuming these cols exist in the variants file
-df.columns = ["Patient_id", "Protein_annotation", "Gene", "Chrom", "Position", "Sample_name", "Path_bam_n"]
-
-
+if __name__ == "__main__":
+    main()
