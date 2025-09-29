@@ -392,31 +392,50 @@ combine_tumor_wbc <- function(vars, path_paired_samples){
 	# Same collection date set to TRUE will require matching entries for Timepoint and Date_collected columns.
 	# path_paired_samples is the absolute path to the tsv file where each row is one patient, with columns corresponding to WBC and cfDNA samples.
 
-	pairs <- read_delim(path_paired_samples, delim="\t")
-	tumor <- vars %>%
-	  filter(Sample_type %in% c("cfDNA", "utDNA")) %>%
-	  inner_join(pairs, by = c("Sample_name" = "cfDNA")) %>%
-	  select(-Sample_type)
-
-	wbc <- vars %>%
-	  filter(Sample_type == "WBC") %>%
-	  inner_join(pairs, by = c("Sample_name" = "WBC")) %>%
-	  select(-Sample_type)
+    # Read sample pairs
+    pairs <- read_delim(path_paired_samples, delim="\t", col_types = cols(.default = "c"))
+    
+    # Split vars into tumor and WBC
+    tumor <- vars %>% filter(Sample_type %in% c("cfDNA", "utDNA"))
+    wbc   <- vars %>% filter(Sample_type == "WBC")
+    
+    # Use pairs table to map tumor to WBC
+    combined_list <- list()
 	
-	variant_cols <- c("Patient_id", "Chrom", "Position", "Ref", "Alt", "Type",
-                  "Function", "Gene", "Consequence", "AAchange", 
-                  "Protein_annotation", "Effects", "cosmic97_coding", 
-                  "avsnp150", "CLNALLELEID", "CLNSIG")
-	
-	combined <- inner_join(tumor, wbc, by = variant_cols, suffix = c("_t", "_n"))
-
-    combined <- combined %>%
-            mutate(tumor_wbc_vaf_ratio = round((VAF_t / VAF_n), 2), 
-                    tumor_wbc_depth_ratio = round((Depth_t / Depth_n), 2))
-	
-	combined <- combined[, c(setdiff(names(combined), "Variant_caller"), "Variant_caller")] # move the variant caller column to the end of the df
-
-    return(combined)
+    for(i in seq_len(nrow(pairs))){
+      wbc_sample <- pairs$WBC[i]
+      tumor_sample <- pairs$cfDNA[i]
+    
+      tumor_sub <- tumor %>% filter(Sample_name == tumor_sample)
+      wbc_sub   <- wbc   %>% filter(Sample_name == wbc_sample)
+    
+      if(nrow(tumor_sub) > 0 & nrow(wbc_sub) > 0){
+        # Columns to match variants on
+        variant_cols <- c("Patient_id", "Chrom", "Position", "Ref", "Alt", "Type",
+                          "Function", "Gene", "Consequence", "AAchange", 
+                          "Protein_annotation", "Effects", "cosmic97_coding", 
+                          "avsnp150", "CLNALLELEID", "CLNSIG", "Variant_caller")
+    
+        pair_combined <- inner_join(
+          tumor_sub, wbc_sub, 
+          by = variant_cols,
+          suffix = c("_t", "_n")
+        ) %>%
+          mutate(
+            tumor_wbc_vaf_ratio = round(VAF_t / VAF_n, 2),
+            tumor_wbc_depth_ratio = round(Depth_t / Depth_n, 2)
+          )
+    
+        combined_list[[length(combined_list)+1]] <- pair_combined
+      }
+    }
+    
+    combined <- bind_rows(combined_list)
+    
+    # Move Variant_caller to the end
+    combined <- combined[, c(setdiff(names(combined), "Variant_caller"), "Variant_caller")]
+    
+      return(combined)
 }
 
 blacklist_variants <- function(vars, PATH_blacklist) {
