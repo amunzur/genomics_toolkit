@@ -90,7 +90,8 @@ Example usage snippets can be found as comments inside individual scripts.
 
 ## Information on process_variants_steps
 
-`STEP1_filter_variants.R`: This script will combine all per sample variant tables into one unfiltered csv file. Here is an example on how to run it:
+### `STEP1_filter_variants.R`
+This script will combine all per sample variant tables into one unfiltered csv file. Here is an example on how to run it:
  
 ```bash
  Rscript STEP1_filter_variants.R \
@@ -127,7 +128,8 @@ min_alt_reads_5_CHIP_final.csv
 
 ```
 
- `STEP2_combine_variant_callers.R`: Combines variants from the three callers into one file, keeping variants detected by 2/3 callers.
+### `STEP2_combine_variant_callers.R`
+Combines variants from the three callers into one file, keeping variants detected by 2/3 callers.
 
 ```bash
 Rscript STEP2_combine_variant_callers.R \
