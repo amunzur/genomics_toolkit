@@ -63,17 +63,17 @@ return_anno_output <- function(PATH_annovar) {
 }
 
 # add a new column to indicate sample type, WBC or tumor. 
-add_sample_type <- function(variant_df){
+# add_sample_type <- function(variant_df){
 
-	x <- str_split(variant_df$Sample_name, "_") # splitted strings as a list
-	y <- unlist(lapply(x, "[", 2)) # gDNA or cfDNA
+# 	x <- str_split(variant_df$Sample_name, "_") # splitted strings as a list
+# 	y <- unlist(lapply(x, "[", 2)) # gDNA or cfDNA
 
-	my_map <- c("gDNA" = "WBC", "gdna" = "WBC", "cfDNA" = "Tumor")
-	variant_df$Sample_type <- unname(my_map[y])
+# 	my_map <- c("gDNA" = "WBC", "gdna" = "WBC", "cfDNA" = "Tumor")
+# 	variant_df$Sample_type <- unname(my_map[y])
 
-	return(variant_df)
+# 	return(variant_df)
 
-}
+# }
 
 filter_somatic_variants <- function(vars, min_alt_reads_t, max_alt_reads_n, min_depth_n, min_VAF_low, min_tumor_to_normal_vaf_ratio, min_VAF_bg_ratio, PATH_blacklist, blacklist = TRUE) {
 	vars$VAF_bg_ratio <- na.fill(vars$VAF_bg_ratio, fill = 99999)
@@ -290,31 +290,31 @@ add_AAchange_effect <- function(vars, variant_caller){
 } # end of function
 
 # based on the cohort_name, add the patient id
-add_patient_information <- function(variant_df, PATH_sample_information){
+# add_patient_information <- function(variant_df, PATH_sample_information){
 
-	x <- str_split(variant_df$Sample_name, "_gDNA|_WBC|_cfDNA")
-	variant_df$Patient_id <- unlist(lapply(x, "[", 1))
-	variant_df$Patient_id <- gsub("GU-|GUBB-", "", variant_df$Patient_id)
+# 	x <- str_split(variant_df$Sample_name, "_gDNA|_WBC|_cfDNA")
+# 	variant_df$Patient_id <- unlist(lapply(x, "[", 1))
+# 	variant_df$Patient_id <- gsub("GU-|GUBB-", "", variant_df$Patient_id)
 
-	sample_info <- read_delim(PATH_sample_information, delim = "\t", col_names = FALSE)
-	names(sample_info) <- c("Patient_id", "Date_collected", "Diagnosis", "Timepoint")
-	variant_df <- left_join(variant_df, sample_info)
+# 	sample_info <- read_delim(PATH_sample_information, delim = "\t", col_names = FALSE)
+# 	names(sample_info) <- c("Patient_id", "Date_collected", "Diagnosis", "Timepoint")
+# 	variant_df <- left_join(variant_df, sample_info)
 
-	variant_df <- variant_df[, c("Patient_id", "Sample_name", "Sample_type", "Date_collected", "Timepoint",  "Diagnosis", colnames(variant_df)[-which(names(variant_df) %in% c("Patient_id", "Sample_name", "Sample_type", "Date_collected", "Timepoint",  "Diagnosis"))])] # move to the beginning
-	return(variant_df)
+# 	variant_df <- variant_df[, c("Patient_id", "Sample_name", "Sample_type", "Date_collected", "Timepoint",  "Diagnosis", colnames(variant_df)[-which(names(variant_df) %in% c("Patient_id", "Sample_name", "Sample_type", "Date_collected", "Timepoint",  "Diagnosis"))])] # move to the beginning
+# 	return(variant_df)
 
-}
+# }
 
-add_patient_information_somatic <- function(variant_df, PATH_sample_information){
+# add_patient_information_somatic <- function(variant_df, PATH_sample_information){
 
-	sample_info <- read_delim(PATH_sample_information, delim = "\t", col_names = FALSE)
-	names(sample_info) <- c("Patient_id", "Date_collected", "Diagnosis", "Timepoint")
-	variant_df <- left_join(variant_df, sample_info)
+# 	sample_info <- read_delim(PATH_sample_information, delim = "\t", col_names = FALSE)
+# 	names(sample_info) <- c("Patient_id", "Date_collected", "Diagnosis", "Timepoint")
+# 	variant_df <- left_join(variant_df, sample_info)
 
-	variant_df <- variant_df[, c("Patient_id", "Sample_name_t", "Date_collected", "Timepoint",  "Diagnosis", colnames(variant_df)[-which(names(variant_df) %in% c("Patient_id", "Sample_name_t", "Date_collected", "Timepoint",  "Diagnosis"))])] # move to the beginning
-	return(variant_df)
+# 	variant_df <- variant_df[, c("Patient_id", "Sample_name_t", "Date_collected", "Timepoint",  "Diagnosis", colnames(variant_df)[-which(names(variant_df) %in% c("Patient_id", "Sample_name_t", "Date_collected", "Timepoint",  "Diagnosis"))])] # move to the beginning
+# 	return(variant_df)
 
-}
+# }
 
 # Removes variants if they are found in more than n_times (appears multiple times)
 # For the remaining, add a new column to indicate if the variant occurs more than once
@@ -388,19 +388,27 @@ add_cfDNA_information <- function(variants_df, DIR_basecounts_DCS, DIR_basecount
 	return(variants_df)
 }
 
-combine_tumor_wbc <- function(vars, match_cfDNA_and_WBC_dates = TRUE){
+combine_tumor_wbc <- function(vars, path_paired_samples){
 	# Same collection date set to TRUE will require matching entries for Timepoint and Date_collected columns.
+	# path_paired_samples is the absolute path to the tsv file where each row is one patient, with columns corresponding to WBC and cfDNA samples.
 
-	tumor <- vars %>% filter(Sample_type == "cfDNA") %>% select(-Sample_type)
-	wbc <- vars %>% filter(Sample_type == "WBC") %>% select(-Sample_type)
+	pairs <- read_delim(path_paired_samples, delim="\t")
+	tumor <- vars %>%
+	  filter(Sample_type %in% c("cfDNA", "utDNA")) %>%
+	  inner_join(pairs, by = c("Sample_name" = "cfDNA")) %>%
+	  select(-Sample_type)
 
-	if (match_cfDNA_and_WBC_dates == TRUE ) {
-    	combined <- inner_join(tumor, wbc, by = c("Patient_id", "Date_collected", "Timepoint", "Diagnosis", "Chrom", "Position", "Ref", "Alt", "Type", "Function", "Gene", "Consequence", "AAchange", "Protein_annotation", "Effects", "cosmic97_coding", "avsnp150", "CLNALLELEID", "CLNSIG", "Variant_caller"))
-	} else {
-    	combined <- inner_join(tumor, wbc, by = c("Patient_id", "Diagnosis", "Chrom", "Position", "Ref", "Alt", "Type", "Function", "Gene", "Consequence", "AAchange", "Protein_annotation", "Effects", "cosmic97_coding", "avsnp150", "CLNALLELEID", "CLNSIG", "Variant_caller"))
-	}
-    names(combined) <- gsub("\\.x", "_t", names(combined)) 
-    names(combined) <- gsub("\\.y", "_n", names(combined)) 
+	wbc <- vars %>%
+	  filter(Sample_type == "WBC") %>%
+	  inner_join(pairs, by = c("Sample_name" = "WBC")) %>%
+	  select(-Sample_type)
+	
+	variant_cols <- c("Patient_id", "Chrom", "Position", "Ref", "Alt", "Type",
+                  "Function", "Gene", "Consequence", "AAchange", 
+                  "Protein_annotation", "Effects", "cosmic97_coding", 
+                  "avsnp150", "CLNALLELEID", "CLNSIG", "Variant_caller")
+	
+	combined <- inner_join(tumor, wbc, by = variant_cols, suffix = c("_t", "_n"))
 
     combined <- combined %>%
             mutate(tumor_wbc_vaf_ratio = round((VAF_t / VAF_n), 2), 
@@ -550,7 +558,8 @@ parse_anno_output <- function(DIR_variant_tables, mode, variant_caller, PATH_sam
 		somatic_func = get("return_anno_output_mutect_somatic")
 		chip_func = get("return_anno_output_mutect_chip")
 	} else if (toupper(variant_caller) == "FREEBAYES") {
-		somatic_func = get("return_anno_output_freebayes_somatic")
+		# somatic_func = get("return_anno_output_freebayes_somatic")
+		#TODO: Error out here. Somatic freebayes not set up.
 		chip_func = get("return_anno_output_freebayes_chip")
 	} else {
 		stop("Invalid variant caller specified.")}
@@ -577,6 +586,13 @@ parse_anno_output <- function(DIR_variant_tables, mode, variant_caller, PATH_sam
 		}
 	}
 	anno_df <- as.data.frame(do.call(rbind, anno_df_list))
+	
+	# Add the patient ID
+	x <- str_split(anno_df$Sample_name, "_gDNA|_WBC|_cfDNA")
+	anno_df$Patient_id <- unlist(lapply(x, "[", 1))
+	anno_df$Patient_id <- gsub("GU-|GUBB-", "", anno_df$Patient_id)
+	anno_df <- anno_df %>% select(Patient_id, everything()) # Move to first col
+	
 	return(anno_df)
 }
 
@@ -590,7 +606,7 @@ return_anno_output_mutect_chip <- function(PATH_variant_table) {
 		separate(col = SB, sep = ",", into = c("Ref_forward", "Ref_reverse", "Alt_forward", "Alt_reverse"), remove = TRUE) %>%
 		select(-EVENTLENGTH) %>% # really didnt need to include this column in the variant tables
 		mutate(Sample = gsub(".tsv", "", basename(PATH_variant_table)), 
-			   Sample_type = str_extract(basename(PATH_variant_table), "cfDNA|WBC"),
+			   Sample_type = str_extract(basename(PATH_variant_table), "cfDNA|WBC|utDNA"),
 			   Sample_name = file_path_sans_ext(basename(PATH_variant_table)),
 			   Date_collected = str_split(Sample_name, "[-_]")  %>% sapply(tail, 1), 
 			   nchar_ref = nchar(REF), 
@@ -641,7 +657,7 @@ return_anno_output_mutect_somatic <- function(PATH_variant_table) {
 		select(Patient_id, Sample_name_t, Date_collected, CHROM, POS, REF, ALT, TYPE, VAF_t, Depth_t, Alt_forward_t, Ref_forward_t, Alt_reverse_t, Ref_reverse_t, Func.refGene, Gene.refGene, ExonicFunc.refGene, 
 		AAChange.refGene, cosmic97_coding, avsnp150, gnomad40_exome_AF, CLNALLELEID, CLNSIG, Sample_name_n, VAF_n, Depth_n, Alt_forward_n, Ref_forward_n, Alt_reverse_n, Ref_reverse_n, tumor_to_normal_VAF_ratio)
 
-	names(df) <- c("Patient_id", "Sample_name_t", "Date_collected", "Chrom", "Position", "Ref", "Alt", "Type", "VAF_t", "Depth_t", "Alt_forward_t", "Ref_forward_t", "Alt_reverse_t", "Ref_reverse_t", "Function", "Gene", "Consequence", 
+	names(df) <- c("Sample_name_t", "Date_collected", "Chrom", "Position", "Ref", "Alt", "Type", "VAF_t", "Depth_t", "Alt_forward_t", "Ref_forward_t", "Alt_reverse_t", "Ref_reverse_t", "Function", "Gene", "Consequence", 
 	"AAchange", "cosmic97_coding", "avsnp150", "gnomad40_exome_AF", "CLNALLELEID", "CLNSIG", "Sample_name_n", "VAF_n", "Depth_n", "Alt_forward_n", "Ref_forward_n", "Alt_reverse_n", "Ref_reverse_n", "tumor_to_normal_VAF_ratio")
 
 	return(df)
@@ -658,7 +674,7 @@ return_anno_output_freebayes_chip <- function(PATH_variant_table) {
 		mutate_at(c("POS", "Ref_forward", "Ref_reverse", "Alt_forward", "Alt_reverse"), as.numeric) %>%
 		mutate(Sample = gsub(".tsv", "", basename(PATH_variant_table)), 
 			   Sample_name = file_path_sans_ext(basename(PATH_variant_table)),
-			   Sample_type = str_extract(basename(PATH_variant_table), "cfDNA|WBC"),
+			   Sample_type = str_extract(basename(PATH_variant_table), "cfDNA|WBC|utDNA"),
 			   Date_collected = str_split(Sample_name, "[-_]")  %>% sapply(tail, 1),
 			   nchar_ref = nchar(REF), 
 			   nchar_alt = nchar(ALT), 
@@ -779,7 +795,7 @@ return_anno_output_vardict_somatic <- function(PATH_variant_table) {
 				 AAChange.refGene, cosmic97_coding, avsnp150, gnomad40_exome_AF, CLNALLELEID, CLNSIG, Sample_name_n, VAF_n, Depth_n, Alt_forward_n, Ref_forward_n, Alt_reverse_n, Ref_reverse_n, tumor_to_normal_VAF_ratio) %>%
 				 mutate(across(c(VAF_t, Depth_t, Alt_forward_t, Alt_reverse_t, Ref_forward_t, Ref_reverse_t, VAF_n, Depth_n, Alt_forward_n, Alt_reverse_n, Ref_forward_n, Ref_reverse_n), as.numeric))
 
-	names(df) <- c("Patient_id", "Sample_name_t", "Date_collected", "Status", "Chrom", "Position", "Ref", "Alt", "Type", "VAF_t", "Depth_t", "Alt_forward_t", "Ref_forward_t", "Alt_reverse_t", "Ref_reverse_t", "Function", "Gene", "Consequence", 
+	names(df) <- c("Sample_name_t", "Date_collected", "Status", "Chrom", "Position", "Ref", "Alt", "Type", "VAF_t", "Depth_t", "Alt_forward_t", "Ref_forward_t", "Alt_reverse_t", "Ref_reverse_t", "Function", "Gene", "Consequence", 
 	"AAchange", "cosmic97_coding", "avsnp150", "gnomad40_exome_AF", "CLNALLELEID", "CLNSIG", "Sample_name_n", "VAF_n", "Depth_n", "Alt_forward_n", "Ref_forward_n", "Alt_reverse_n", "Ref_reverse_n", "tumor_to_normal_VAF_ratio")
 
 	return(df)
@@ -791,7 +807,7 @@ return_anno_output_vardict_chip <- function(PATH_variant_table) {
 	colnames(df) <- gsub(paste0(file_path_sans_ext(basename(PATH_variant_table)), "."), "", colnames(df)) 
 
 	# Indicate insertion, deletion or SNV
-	df <- df %>% mutate(Sample_type = str_extract(basename(PATH_variant_table), "cfDNA|WBC"),
+	df <- df %>% mutate(Sample_type = str_extract(basename(PATH_variant_table), "cfDNA|WBC|utDNA"),
 						Sample_name = file_path_sans_ext(basename(PATH_variant_table)),
 						Date_collected = str_split(Sample_name, "[-_]")  %>% sapply(tail, 1), 
 						TYPE = case_when(
