@@ -10,7 +10,7 @@ parser$add_argument('--mutation_type', type = 'character', required = TRUE, help
 parser$add_argument('--consensus', type = 'character', required = FALSE, help = '')
 parser$add_argument('--DIR_bams', type = 'character', required = TRUE, help = 'Location of the bams.')
 parser$add_argument('--path_output', type = 'character', required = FALSE, help = 'Output file will be saved here.')
-parser$add_argument('--WBC_only', action = 'store_true', help = 'Are these WBC only calls?')
+parser$add_argument('--unpaired', action = 'store_true', help = 'Are these WBC only or tumor only calls?')
 parser$add_argument('--input_file_keyword', type = 'character', required = FALSE, help = 'If the input files contain a keyword, specify it here.')
 
 args <- parser$parse_args()
@@ -21,7 +21,7 @@ print(args)
 # --mutation_type somatic \
 # --DIR_bams /groups/wyattgrp/users/amunzur/hla_pipeline/results/data/bam/sorted \
 # --path_output /groups/wyattgrp/users/amunzur/hla_pipeline/results/variant_calling/ctdna_mutations.csv \
-# --WBC_only \
+# --unpaired \
 # --input_file_keyword WBConly
 
 # Access the arguments
@@ -30,7 +30,7 @@ print(args)
 dir_working <- args$dir_working
 mutation_type <- toupper(args$mutation_type)
 DIR_bams <- args$DIR_bams
-WBC_only <- args$WBC_only
+unpaired <- args$unpaired
 path_output <- args$path_output
 input_file_keyword <- args$input_file_keyword
 
@@ -50,7 +50,7 @@ library(matrixStats)
 # It counts how many variant callers identified each given variant. 
 # ca r_env_v2
 
-source("/groups/wyattgrp/users/amunzur/toolkit/combine_variant_callers_UTILITIES.R")
+source("/groups/wyattgrp/users/amunzur/toolkit/process_variants_steps/combine_variant_callers_UTILITIES.R")
 
 # COMBINE ALL BLADDER AND KIDNEY IN ONE FILE
 # consensus <- "SSCS2"
@@ -96,10 +96,10 @@ for (variant_caller in variant_callers) {
   }
 }
 
-if (WBC_only) {
-  combined_df <- combine_variant_callers_WBC_only_calls(df_list)
+if (unpaired) {
+  combined_df <- combine_variant_callers_unpaired_calls(df_list)
   combined_df$Consensus <- consensus
-  combined_df <- add_bam_path_WBC_only(combined_df, DIR_bams)
+  combined_df <- add_bam_path_unpaired(combined_df, DIR_bams)
 } else {
   combined_df <- combine_variant_callers(df_list)
   combined_df$Consensus <- consensus
