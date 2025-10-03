@@ -10,13 +10,13 @@
 #   --suffix "" \
 #   --given_range 100
 
-# For WBC-only BAMs:
+# For unpaired BAMs:
 # python make_igv_snapshots.py \
 #   --path_variants /path/to/wbc_variants.csv \
 #   --PATH_batch /path/to/output_batch_wbc.txt \
 #   --DIR_snapshots /path/to/snapshots_wbc \
-#   --wbc-only \
-#   --given_range 200
+#   --unpaired \
+#   --given_range 150 \
 
 """
 Created on Thu May 27 13:45:38 2021
@@ -42,8 +42,10 @@ def make_igv_batch_script(df, PATH_batch, DIR_snapshots, prefix, suffix, given_r
 	"""
 	for index, row in df.iterrows(): # iterate through each snv in the variants file
 		
-		if unpaired:
-			BAM_wbc = apply_prefix_suffix(row["Path_bam"], prefix, suffix) # Can be both tumor or WBC
+		if "Path_bam" not in df.columns and unpaired:
+			BAM_wbc = apply_prefix_suffix(row["Sample_name"], prefix, suffix) # Can be tumor or WBC
+		elif "Path_bam" in df.columns and unpaired:
+			BAM_wbc = apply_prefix_suffix(row["Path_bam"], prefix, suffix)
 		else:
 			BAM_wbc = apply_prefix_suffix(row["Path_bam_n"], prefix, suffix)
 			BAM_tumor = apply_prefix_suffix(row["Path_bam_t"], prefix, suffix)
@@ -103,7 +105,7 @@ def main():
 
     # Ensure required columns exist
 	required_cols = (
-		["Patient_id", "Protein_annotation", "Gene", "Chrom", "Position", "Sample_name", "Path_bam"]
+		["Patient_id", "Protein_annotation", "Gene", "Chrom", "Position", "Sample_name"]
 		if args.unpaired
 		else ["Patient_id", "Protein_annotation", "Gene", "Chrom", "Position", "Sample_name_t", "Path_bam_t", "Path_bam_n",
 		]
