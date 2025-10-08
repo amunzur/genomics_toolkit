@@ -42,10 +42,10 @@ def make_igv_batch_script(df, PATH_batch, DIR_snapshots, prefix, suffix, given_r
 	"""
 	for index, row in df.iterrows(): # iterate through each snv in the variants file
 		
-		if "Path_bam" not in df.columns and unpaired:
-			BAM_wbc = apply_prefix_suffix(row["Sample_name"], prefix, suffix) # Can be tumor or WBC
-		elif "Path_bam" in df.columns and unpaired:
+		if "Path_bam" in df.columns and unpaired:
 			BAM_wbc = apply_prefix_suffix(row["Path_bam"], prefix, suffix)
+		elif "Path_bam" not in df.columns and unpaired:
+			BAM_wbc = apply_prefix_suffix(row["Sample_name"], prefix, suffix) # Can be tumor or WBC
 		else:
 			BAM_wbc = apply_prefix_suffix(row["Path_bam_n"], prefix, suffix)
 			BAM_tumor = apply_prefix_suffix(row["Path_bam_t"], prefix, suffix)
@@ -104,13 +104,13 @@ def main():
 	df = pd.read_csv(args.path_variants)
 
     # Ensure required columns exist
-	required_cols = (
-		["Patient_id", "Protein_annotation", "Gene", "Chrom", "Position", "Sample_name"]
-		if args.unpaired
-		else ["Patient_id", "Protein_annotation", "Gene", "Chrom", "Position", "Sample_name_t", "Path_bam_t", "Path_bam_n",
-		]
-	)
-	df = df[required_cols]
+	# required_cols = (
+	# 	["Patient_id", "Protein_annotation", "Gene", "Chrom", "Position", "Sample_name"]
+	# 	if args.unpaired
+	# 	else ["Patient_id", "Protein_annotation", "Gene", "Chrom", "Position", "Sample_name_t", "Path_bam_t", "Path_bam_n",
+	# 	]
+	# )
+	# df = df[required_cols]
 
 	make_igv_batch_script(
 		df,
