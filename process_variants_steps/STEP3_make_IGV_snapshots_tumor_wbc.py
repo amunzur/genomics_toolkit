@@ -7,7 +7,7 @@
 #   --PATH_batch /path/to/output_batch.txt \
 #   --DIR_snapshots /path/to/snapshots \
 #   --prefix "" \
-#   --suffix "" \
+#   --suffix ".bam" \
 #   --given_range 100
 
 # For unpaired BAMs:
@@ -46,6 +46,9 @@ def make_igv_batch_script(df, PATH_batch, DIR_snapshots, prefix, suffix, given_r
 			BAM_wbc = apply_prefix_suffix(row["Path_bam"], prefix, suffix)
 		elif "Path_bam" not in df.columns and unpaired:
 			BAM_wbc = apply_prefix_suffix(row["Sample_name"], prefix, suffix) # Can be tumor or WBC
+		elif "Path_bam" not in df.columns and not unpaired and "Sample_name_n" in df.columns and "Sample_name_n" in df.columns:
+			BAM_wbc = apply_prefix_suffix(row["Sample_name_n"], prefix, suffix)
+			BAM_tumor = apply_prefix_suffix(row["Sample_name_t"], prefix, suffix)
 		else:
 			BAM_wbc = apply_prefix_suffix(row["Path_bam_n"], prefix, suffix)
 			BAM_tumor = apply_prefix_suffix(row["Path_bam_t"], prefix, suffix)
