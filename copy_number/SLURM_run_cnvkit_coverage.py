@@ -23,7 +23,8 @@ def main():
     parser.add_argument("--path_panel", required=True, help="Path to bed file with locations to the probes.")
     parser.add_argument("--dir_batch_scripts", required=True, help="Generated sbatch file will be saved here.")
     parser.add_argument("--dir_logs", required=True, help="Where the Slurm error messages and outputs will be saved.")
-
+    parser.add_argument("--sbatch_time_string", required=False, default="29:00", help="Timelimit for sbatch file. Will default to 30 mins.")
+    
     args = parser.parse_args()
     
     if "--help" in sys.argv:
@@ -41,7 +42,7 @@ def main():
     path_logs=os.path.join(dir_logs, f"{sample_name}.log")
     path_output=os.path.join(dir_output, f"{sample_name}.cnn")
 
-    cnvkit_command=f"cnvkit.py coverage {path_bam} {path_panel} -o {path_output} -p 8 2> {path_logs}"
+    cnvkit_command=f"cnvkit.py coverage {path_bam} {path_panel} -o {path_output} -p 1 2> {path_logs}"
     
     os.makedirs(dir_batch_scripts, exist_ok=True)
         
@@ -51,9 +52,9 @@ def main():
     with open(path_sbatch, 'a') as file:
         file.write('#!/bin/bash\n')
         file.write(f'#SBATCH --job-name={jobname}\n')
-        file.write('#SBATCH --cpus-per-task=4\n')
+        file.write('#SBATCH --cpus-per-task=2\n')
         file.write('#SBATCH --mem=4G\n')
-        file.write('#SBATCH --time=30:00\n')
+        file.write('#SBATCH --time=35:00\n')
         file.write(f'#SBATCH --error {path_logs}\n')
         file.write(f'#SBATCH --output {path_logs}\n')
         file.write('\n')
@@ -70,18 +71,21 @@ if __name__ == "__main__":
 
 # Single sample
 # /path/to/amunzur/toolkit/SLURM_run_cnvkit_coverage.py \
-# --path_bam /path/to/amunzur/lu_chip/results/bam/SSCS2_final/TheraP-284_WBC_Baseline_2019Aug19.bam \
+# --path_bam /path/to/amunzur/lu_chip/results/bam/SSCS2_final/sample_name.bam \
 # --dir_output /path/to/amunzur/lu_chip/results/copynum/coverage/snps \
 # --path_panel /path/to/jbacon/reference/bed_files/all/SNP_spikein_probes.bed \
 # --dir_batch_scripts /path/to/amunzur/lu_chip/workflow/scripts/batch_scripts/cnvkit_coverage_snps \
 # --dir_logs /path/to/amunzur/lu_chip/results/logs_slurm/cnvkit_coverage_snps
 
 # Multiple samples
-# while IFS=$'\t' read -r WBC_name; do
-# /path/to/amunzur/toolkit/SLURM_run_cnvkit_coverage.py \
-# --path_bam /path/to/amunzur/lu_chip/results/bam/crpc_panel/${WBC_name}.bam \
-# --dir_output /path/to/amunzur/lu_chip/results/copynum/coverage/snps \
-# --path_panel /path/to/jbacon/reference/bed_files/all/SNP_spikein_probes.bed \
-# --dir_batch_scripts /path/to/amunzur/lu_chip/workflow/scripts/batch_scripts/cnvkit_coverage_snps \
-# --dir_logs /path/to/amunzur/lu_chip/results/logs_slurm/cnvkit_coverage_snps
-# done < <(cut -f1 /path/to/amunzur/lu_chip/resources/sample_lists/paired_samples.tsv | grep TheraP | sort | uniq)
+# while IFS=$'\t' read -r sample_name; do
+#     # Skip blank lines or header
+#     if [[ -n "$sample_name" && "$sample_name" != "sample_names" ]]; then
+#         /path/to/amunzur/toolkit/SLURM_run_cnvkit_coverage.py \
+#         --path_bam /path/to/amunzur/lu_chip/results/bam/crpc_panel/${sample_name}.bam \
+#         --dir_output /path/to/amunzur/lu_chip/results/copynum/coverage/snps \
+#         --path_panel /path/to/jbacon/reference/bed_files/all/SNP_spikein_probes.bed \
+#         --dir_batch_scripts /path/to/amunzur/lu_chip/workflow/scripts/batch_scripts/cnvkit_coverage_snps \
+#         --dir_logs /path/to/amunzur/lu_chip/results/logs_slurm/cnvkit_coverage_snps
+#     fi
+# done < path_to_samples_list.tsv
