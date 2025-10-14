@@ -2,7 +2,7 @@
 # ca snakemake
 
 """
-Generates a SLURM batch script to run CNVkit's coverage command on a BAM file.
+Generates a SLURM batch script to run CNVkit's coverage command on a BAM file. You need to have a conda env named cnv with cnvkit installed.
 
 Inputs:
 - BAM file for a single sample
@@ -17,31 +17,38 @@ import argparse
 import pandas as pd
 
 def main():
+    default_conda_path = os.path.expanduser("~/anaconda3/etc/profile.d/conda.sh")
+
     parser = argparse.ArgumentParser(description="Run cnvkit coverage on single sample.")
+    parser.add_argument("--path_conda", required=False, default=default_conda_path, help=f"Absolute path to your conda.sh file. Defaults to {default_conda_path}")
     parser.add_argument("--path_bam", required=True, help="Abs path to bam.")
     parser.add_argument("--dir_output", required=True, help="Outputted .cnn file will be saved here. Abs path please.")
     parser.add_argument("--path_panel", required=True, help="Path to bed file with locations to the probes.")
     parser.add_argument("--dir_batch_scripts", required=True, help="Generated sbatch file will be saved here.")
     parser.add_argument("--dir_logs", required=True, help="Where the Slurm error messages and outputs will be saved.")
     parser.add_argument("--sbatch_time_string", required=False, default="29:00", help="Timelimit for sbatch file. Will default to 30 mins.")
-    
+    parser.add_argument("--sbatch_partition", required=False, default="long", help="Partition. Choose from: long, big-mem, normal, express, debug. Defaults to long.")
+        
     args = parser.parse_args()
     
     if "--help" in sys.argv:
         parser.print_help()
         sys.exit()
     
+    path_conda=args.path_conda
     path_bam=args.path_bam
     dir_output=args.dir_output
     path_panel=args.path_panel
     dir_batch_scripts=args.dir_batch_scripts
     dir_logs=args.dir_logs
+    sbatch_time_string=args.sbatch_time_string
+    sbatch_partition=args.sbatch_partition
         
     sample_name=os.path.basename(path_bam).replace(".bam", "")
     path_sbatch=os.path.join(dir_batch_scripts, f"{sample_name}.batch")
     path_logs=os.path.join(dir_logs, f"{sample_name}.log")
     path_output=os.path.join(dir_output, f"{sample_name}.cnn")
-
+    
     cnvkit_command=f"cnvkit.py coverage {path_bam} {path_panel} -o {path_output} -p 1 2> {path_logs}"
     
     os.makedirs(dir_batch_scripts, exist_ok=True)
@@ -54,18 +61,19 @@ def main():
         file.write(f'#SBATCH --job-name={jobname}\n')
         file.write('#SBATCH --cpus-per-task=2\n')
         file.write('#SBATCH --mem=4G\n')
-        file.write('#SBATCH --time=35:00\n')
+        file.write(f'#SBATCH --time={sbatch_time_string}\n')
         file.write(f'#SBATCH --error {path_logs}\n')
         file.write(f'#SBATCH --output {path_logs}\n')
+        file.write(f'#SBATCH --partition={sbatch_partition}\n')
         file.write('\n')
-        file.write('source /home/amunzur/anaconda3/etc/profile.d/conda.sh\n')
+        file.write(f'source {path_conda}\n')
         file.write('conda activate cnv\n')
         file.write('\n')
         file.write('# Run CNVKIT coverage\n')
         file.write(cnvkit_command)
         
         print(f"sbatch {path_sbatch}")
-
+    
 if __name__ == "__main__":
     main()
 

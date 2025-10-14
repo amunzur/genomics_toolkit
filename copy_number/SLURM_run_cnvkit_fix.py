@@ -1,7 +1,7 @@
 #!/home/amunzur/anaconda3/envs/snakemake/bin/python
 
 """
-Given a sample name and path to a pooled normal, runs cnvkit fix on the sample.
+Given a sample name and path to a pooled normal, runs cnvkit fix. You need to have a conda env named cnv with cnvkit installed.
 """
     
 import os
@@ -10,26 +10,34 @@ import argparse
 import re
 
 def main():
+    default_conda_path = os.path.expanduser("~/anaconda3/etc/profile.d/conda.sh")
+    
     parser = argparse.ArgumentParser(description="Run cnvkit fix.")
+    parser.add_argument("--path_conda", required=False, default=default_conda_path, help=f"Absolute path to your conda.sh file. Defaults to {default_conda_path}")
     parser.add_argument("--path_cnn", required=True, help="This is the path to the sample's cnn file.")
     parser.add_argument("--path_pooled_reference_normal", required=True, help="Pooled normal")
     parser.add_argument("--dir_wbc_vcf", default=None, help="Will look for a VCF file here for snps. If argument not passed, vcf SNPs won't be used during segmentation.")
     parser.add_argument("--dir_logs", required=True, help="Where the Slurm error messages and outputs will be saved.")
     parser.add_argument("--dir_batch_scripts", required=True, help="Generated sbatch file will be saved here.")
     parser.add_argument("--dir_output", required=True, help="An output file will be generated here.")
-
+    parser.add_argument("--sbatch_time_string", required=False, default="29:00", help="Timelimit for sbatch file. Will default to 30 mins.")
+    parser.add_argument("--sbatch_partition", required=False, default="long", help="Partition. Choose from: long, big-mem, normal, express, debug. Defaults to long.")
+    
     args = parser.parse_args()
     
     if "--help" in sys.argv:
         parser.print_help()
         sys.exit()
     
+    path_conda=args.path_conda
     path_cnn=args.path_cnn
     path_pooled_reference_normal=args.path_pooled_reference_normal
     dir_wbc_vcf=args.dir_wbc_vcf
     dir_logs=args.dir_logs
     dir_batch_scripts=args.dir_batch_scripts
     dir_output=args.dir_output
+    sbatch_time_string=args.sbatch_time_string
+    sbatch_partition=args.sbatch_partition
     
     sample_name=os.path.basename(path_cnn).replace(".cnn", "")
     patient_id = re.sub(r'([_-](cfDNA|WBC|FiT)).*', '', sample_name)
@@ -55,8 +63,8 @@ def main():
     else:
         command_segment=f"cnvkit.py segment {path_output} -o {path_output_segment}"
     
-    command_plotting_scatter=f"cnvkit.py scatter {path_output} -s {path_output_segment} -o /groups/wyattgrp/users/amunzur/hla_pipeline/results/copynum/figures/{sample_name}_scatter.pdf"
-    command_plotting_diagram=f"cnvkit.py diagram {path_output} -s {path_output_segment} -o /groups/wyattgrp/users/amunzur/hla_pipeline/results/copynum/figures/{sample_name}_diagram.pdf"
+    command_plotting_scatter=f"cnvkit.py scatter {path_output} -s {path_output_segment} -o /groups/wyattgrp/users/amunzur/hla_project/allele_specific_copynum/figures/{sample_name}_scatter.png"
+    command_plotting_diagram=f"cnvkit.py diagram {path_output} -s {path_output_segment} -o /groups/wyattgrp/users/amunzur/hla_project/allele_specific_copynum/figures/{sample_name}_diagram.png"
     
     os.makedirs(dir_batch_scripts, exist_ok=True)
     os.makedirs(dir_logs, exist_ok=True)
@@ -72,11 +80,12 @@ def main():
         file.write(f'#SBATCH --job-name={jobname}\n')
         file.write('#SBATCH --cpus-per-task=4\n')
         file.write('#SBATCH --mem=8G\n')
-        file.write('#SBATCH --time=30:00\n')
+        file.write(f'#SBATCH --time={sbatch_time_string}\n')
         file.write(f'#SBATCH --error {path_logs}\n')
         file.write(f'#SBATCH --output {path_logs}\n')
+        file.write(f'#SBATCH --partition={sbatch_partition}\n')
         file.write('\n')
-        file.write('source /home/amunzur/anaconda3/etc/profile.d/conda.sh\n')
+        file.write(f'source {path_conda}\n')
         file.write('conda activate cnv\n')
         file.write('\n')
         file.write('# Run CNVKIT fix\n')
