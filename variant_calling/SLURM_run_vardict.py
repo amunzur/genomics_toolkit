@@ -1,6 +1,7 @@
 #!/home/amunzur/anaconda3/envs/snakemake/bin/python
 """
 For a given list of samples, generate per sample batch scripts to run Vardict. This is single sample mode.
+Need to have VarDictJava in home dir or provide the path.
 """
 # /groups/wyattgrp/users/amunzur/toolkit/SLURM_run_vardict.py \
     # --dir_batch_scripts /groups/wyattgrp/users/amunzur/hla_pipeline/workflow/batch_scripts/vardict \
@@ -13,12 +14,13 @@ For a given list of samples, generate per sample batch scripts to run Vardict. T
     # --dir_output /groups/wyattgrp/users/amunzur/hla_pipeline/results/vardict/wbc_snps \
 
 import os
-
 import sys
 import argparse
 
 def main():
     # Argument parsing
+    home_dir=os.path.expanduser("~")
+    
     parser = argparse.ArgumentParser(description="Run VarDictJava on a single sample.")
     parser.add_argument("--path_hg38", required=True, help="Path to the reference fasta.")
     parser.add_argument("--threshold_min_vaf", required=True, help="Minimum VAF required to detect mutations.")
@@ -28,7 +30,7 @@ def main():
     parser.add_argument("--dir_output", required=True, help="Outputted VCF will be saved here.")
     parser.add_argument("--dir_batch_scripts", required=True, help="Batch script will be written here.")
     parser.add_argument("--dir_logs", required=True, help="Vardict logs will be here.")
-    parser.add_argument("--dir_vardictjava", required=False, default="", help="Path to the directory containing VardictJava. Defaults to home directory.")
+    parser.add_argument("--dir_vardictjava", required=False, default=home_dir, help="Path to the directory containing VardictJava. Defaults to home directory.")
     parser.add_argument("--sbatch_time_string", required=False, default="29:00", help="Timelimit for sbatch file. Will default to 30 mins.")
     parser.add_argument("--sbatch_partition", required=False, default="long", help="Partition. Choose from: long, big-mem, normal, express, debug. Defaults to long.")
     
