@@ -69,6 +69,8 @@ def main():
         file.write(f'#SBATCH --output {path_logs}\n')
         file.write(f'#SBATCH --partition={sbatch_partition}\n')
         file.write('\n')
+        file.write('export PATH="/usr/local/bin:$PATH"') # This ensure Rscript is correctly located
+        file.write('\n')
         file.write('# Run Vardict\n')
         file.write(f'/home/jbacon/mambaforge/envs/pipeline/bin/vardict-java \
                    -G {path_hg38} \
