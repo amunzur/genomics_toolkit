@@ -1,4 +1,4 @@
-#!/home/amunzur/anaconda3/envs/snakemake/bin/python
+#!/usr/bin/python
 """
 For a given list of samples, generate per sample batch scripts to run Vardict. This is single sample mode.
 Need to have VarDictJava in home dir or provide the path.
@@ -30,9 +30,9 @@ def main():
     parser.add_argument("--dir_output", required=True, help="Outputted VCF will be saved here.")
     parser.add_argument("--dir_batch_scripts", required=True, help="Batch script will be written here.")
     parser.add_argument("--dir_logs", required=True, help="Vardict logs will be here.")
-    parser.add_argument("--dir_vardictjava", required=False, default=home_dir, help="Path to the directory containing VardictJava. Defaults to home directory.")
+    parser.add_argument("--dir_vardictjava", required=False, default=home_dir, help="Path to vardict. Defaults to home directory.")
     parser.add_argument("--sbatch_time_string", required=False, default="29:00", help="Timelimit for sbatch file. Will default to 30 mins.")
-    parser.add_argument("--sbatch_partition", required=False, default="long", help="Partition. Choose from: long, big-mem, normal, express, debug. Defaults to long.")
+    parser.add_argument("--sbatch_partition", required=False, default="", help="Partition. Choose from: long, big-mem, normal, express, debug. Defaults to long.")
     
     args = parser.parse_args()
     
@@ -67,19 +67,21 @@ def main():
         file.write(f'#SBATCH --time={sbatch_time_string}\n')
         file.write(f'#SBATCH --error {path_logs}\n')
         file.write(f'#SBATCH --output {path_logs}\n')
-        file.write(f'#SBATCH --partition={sbatch_partition}\n')
+        if sbatch_partition!="":
+            file.write(f'#SBATCH --partition={sbatch_partition}\n')
+        
         file.write('\n')
         file.write('export PATH="/usr/local/bin:$PATH"') # This ensure Rscript is correctly located
         file.write('\n')
         file.write('# Run Vardict\n')
-        file.write(f'/home/jbacon/mambaforge/envs/pipeline/bin/vardict-java \
+        file.write(f'/home/amunzur/VarDictJava/VarDict/vardict \
                    -G {path_hg38} \
                     -f {threshold_min_vaf} \
                     -N {sample_name} \
                     -r {min_alt_reads} \
                     -b {path_bam} \
                     -k 0 -c 1 -S 2 -E 3 -g 4 {path_bed} | \
-                    {dir_vardictjava}/VarDictJava/build/install/VarDict/bin/teststrandbias.R | \
+                    /home/amunzur/anaconda3/envs/r_env_v2/bin/Rscript {dir_vardictjava}/VarDictJava/build/install/VarDict/bin/teststrandbias.R | \
                     {dir_vardictjava}/VarDictJava/build/install/VarDict/bin/var2vcf_valid.pl > {path_output}')
         print(f"sbatch {path_sbatch}")
 

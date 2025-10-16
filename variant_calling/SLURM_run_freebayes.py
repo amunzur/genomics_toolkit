@@ -1,4 +1,4 @@
-#!/home/amunzur/anaconda3/envs/snakemake/bin/python
+#!/usr/bin/python
 """
 For a given list of samples, generate per sample batch scripts to run Vardict. This is single sample mode.
 """
