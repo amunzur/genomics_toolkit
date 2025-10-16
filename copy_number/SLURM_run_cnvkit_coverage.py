@@ -27,7 +27,7 @@ def main():
     parser.add_argument("--dir_batch_scripts", required=True, help="Generated sbatch file will be saved here.")
     parser.add_argument("--dir_logs", required=True, help="Where the Slurm error messages and outputs will be saved.")
     parser.add_argument("--sbatch_time_string", required=False, default="29:00", help="Timelimit for sbatch file. Will default to 30 mins.")
-    parser.add_argument("--sbatch_partition", required=False, default="long", help="Partition. Choose from: long, big-mem, normal, express, debug. Defaults to long.")
+    parser.add_argument("--sbatch_partition", required=False, default="", help="Partition. Choose from: long, big-mem, normal, express, debug. Defaults to long.")
         
     args = parser.parse_args()
     
@@ -64,7 +64,10 @@ def main():
         file.write(f'#SBATCH --time={sbatch_time_string}\n')
         file.write(f'#SBATCH --error {path_logs}\n')
         file.write(f'#SBATCH --output {path_logs}\n')
-        file.write(f'#SBATCH --partition={sbatch_partition}\n')
+        
+        if sbatch_partition!="":
+            file.write(f'#SBATCH --partition={sbatch_partition}\n')
+        
         file.write('\n')
         file.write(f'source {path_conda}\n')
         file.write('conda activate cnv\n')
