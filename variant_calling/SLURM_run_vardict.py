@@ -81,7 +81,7 @@ def main():
                     -r {min_alt_reads} \
                     -b {path_bam} \
                     -k 0 -c 1 -S 2 -E 3 -g 4 {path_bed} | \
-                    /home/amunzur/anaconda3/envs/r_env_v2/bin/Rscript {dir_vardictjava}/VarDictJava/build/install/VarDict/bin/teststrandbias.R | \
+                    {dir_vardictjava}/VarDictJava/build/install/VarDict/bin/teststrandbias.R | \
                     {dir_vardictjava}/VarDictJava/build/install/VarDict/bin/var2vcf_valid.pl > {path_output}')
         print(f"sbatch {path_sbatch}")
 
