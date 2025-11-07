@@ -85,7 +85,7 @@ for (variant_caller in variant_callers) {
     if (mutation_type == "CHIP") {
       file_path <- sprintf("%s/results/variant_calling/%s/finalized/%s/min_alt_reads_%s_CHIP_final%s.csv", dir_working, variant_caller, consensus, min_alt_reads, input_file_keyword)
     } else {
-      file_path <- sprintf("%sresults/variant_calling/%s/finalized/%s/SOMATIC_final%s.csv", dir_working, variant_caller, consensus, input_file_keyword)
+      file_path <- sprintf("%s/results/variant_calling/%s/finalized/%s/SOMATIC_final%s.csv", dir_working, variant_caller, consensus, input_file_keyword)
     }
   if (file.exists(file_path)) {
     print(file_path)
