@@ -79,7 +79,7 @@ plt.rcParams['legend.handlelength'] = 0.4
 plt.rcParams['legend.handleheight'] = 0.70
 
 # source functions
-source_functions = "UTILITIES_make_OP.py" # In the same toolkit dir
+source_functions = "/groups/wyattgrp/users/amunzur/toolkit/visualization/UTILITIES_make_OP.py" # In the same toolkit dir
 with open(source_functions, 'r') as file:
     script_code = file.read()
 
@@ -150,9 +150,10 @@ def main():
          "nonsynonymous_snv": "missense"})
         
     # Compute gene ordering
-    path_gene_groups="/groups/wyattgrp/users/amunzur/ironman_ch/resources/gene_groups.tsv"
-    genes_to_include = chip_main["Gene"].unique()
-    genes_to_include=["DNMT3A", "TET2", "ATM", "CHEK2", "PPM1D", "TP53", "GNAS", "KDM6A", "TERT", "FLT3", "NRAS", "BRCC3", "KMT2D", "MYD88", "GATA2", "CEBPA", "KRAS", "ASXL1", "SETDB1", "RUNX1", "SRSF2", "CUX1", "BCOR", "SH2B3", "BCORL1", "SETD2", "NF1"]
+    path_gene_groups="/groups/wyattgrp/users/amunzur/rumble/Clonal-hematopoiesis-pipeline/resources/gene_groups.tsv"
+    # genes_to_include = chip_main["Gene"].unique()
+    # genes_to_include=["DNMT3A", "TET2", "ATM", "CHEK2", "PPM1D", "TP53", "GNAS", "KDM6A", "TERT", "FLT3", "NRAS", "BRCC3", "KMT2D", "MYD88", "GATA2", "CEBPA", "KRAS", "ASXL1", "SETDB1", "RUNX1", "SRSF2", "CUX1", "BCOR", "SH2B3", "BCORL1", "SETD2", "NF1"]
+    genes_to_include=['TET2', 'DNMT3A', 'ASXL1', 'KMT2D', 'TP53', 'ERBB2', 'BRCA2', 'ATM', 'RB1', 'FGFR3', 'BRCA1', 'TERT', 'NF1']
     # gene_order_df=assign_mutation_values_singledf(genes = genes_to_include, muts_df=chip_main, bar_height=1, omit_missing_row = True, path_gene_groups=path_gene_groups)
     gene_order_df=assign_mutation_values_singledf_from_tsv(path_gene_groups)
     ch_plotting_df=calculate_mutation_burden_per_gene(chip_main, samplenamecol="Patient_id").merge(gene_order_df, how = "inner")
@@ -163,6 +164,7 @@ def main():
     ch_mut_counts  = get_mutation_counts_per_gene(chip_main, make_a_seperate_category_for_multiple=False, vaf_colname=vaf_colname)[0].merge(gene_order_df[["Gene", "CH position"]], on="Gene", how = "inner").rename(columns = {"CH position": "Order on oncoprint"}).set_index("Order on oncoprint").drop("Gene", axis = 1)
     
     ch_pt_counts = calculate_patient_counts(chip_main)
+    ch_pt_counts.columns=["Patient_id", "Count"]
     
     samples_enumerated = ch_plotting_df.merge(ch_pt_counts)
     samples_enumerated = samples_enumerated[[
@@ -191,17 +193,17 @@ def main():
     fig_height = figure_height
     tc_height = 2
     mutcounts_height = 2
-    sex_height = 0.5
-    age_height = 0.5
-    diagnosis_height = 0.5
+    sex_height = 0
+    age_height = 0
+    diagnosis_height = 0
     main_height = len(genes_to_include)*2
     
     fig = plt.figure(figsize = (fig_width, fig_height))
-    gs = mpl.gridspec.GridSpec(ncols = 2, nrows = 9, height_ratios = [tc_height, tc_height, mutcounts_height, sex_height, age_height, diagnosis_height, main_height, 2, 3], width_ratios = [1, 0.1], hspace = 0, wspace = 0)
+    gs = mpl.gridspec.GridSpec(ncols = 2, nrows = 9, height_ratios = [tc_height, 1, mutcounts_height, sex_height, age_height, diagnosis_height, main_height, 2, 3], width_ratios = [1, 0.1], hspace = 0, wspace = 0.07)
     
     # Add and space out subplots
     # ax_ctDNA_vaf = fig.add_subplot(gs[0, 0]) #Plotting the highest VAF per patient
-    ax_CH_vaf = fig.add_subplot(gs[1, 0]) #Plotting the highest VAF per patient
+    ax_CH_vaf = fig.add_subplot(gs[0, 0]) #Plotting the highest VAF per patient
     ax_mut_counts_patient = fig.add_subplot(gs[2, 0], sharex=ax_CH_vaf) 
     ax_main = fig.add_subplot(gs[6, 0], sharex = ax_mut_counts_patient)
     ax_mut_counts = fig.add_subplot(gs[6, 1], sharey = ax_main) 
@@ -218,8 +220,13 @@ def main():
     
     ax_mut_counts_patient = plot_mut_counts_per_patient_single_df(ax_mut_counts_patient, ch_pt_counts, bar_width)
     ax_legend = add_legend_simple(mut_dict, ax_legend)
+
+    # add figure legend
+    ax_legend = fig.add_axes([0.14, 0.03, 0.8, 0.1]) # [left, bottom, width, height] in figure coordinates
+    ax_legend.axis('off')
     
     fig.suptitle(figure_title)
+    fig.subplots_adjust(top=0.92)
     fig.savefig(os.path.join(dir_figures, f"OP_{keyword}.pdf"), transparent=True)
     fig.savefig(os.path.join(dir_figures, f"OP_{keyword}.png"))
     
@@ -227,7 +234,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-# python /path/to/toolkit/make_OP_show_all_muts.py \
-    # --path_muts /path/to/results/variant_calling/CHIP_SSCS2_curated.csv \
-    # --dir_figures /path/to/results/figures/patient_profiles \
