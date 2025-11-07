@@ -17,34 +17,44 @@ def plot_mut_counts_per_gene(mut_counts_df, vaf_df, ax_mut_counts, mut_dict, bar
         bottom += values[i]
     
     remove_frame(ax_mut_counts, ["top", "right"])
-    ax_mut_counts.set_xlim((0, 100))
-    ax_mut_counts.set_xticks([])
-    ax_mut_counts.set_xticks([0, 50, 100])
-    ax_mut_counts.set_xticklabels(["0", "50", "100"], fontsize = 5)
+
+    max_counts = bottom.max()  # max cumulative count per gene
+    x_padding = max_counts * 0.15  # 10% padding
+    ax_mut_counts.set_xlim(0, max_counts + x_padding)
+    
+    # set x-ticks dynamically for mut counts per gene
+    xticks = np.linspace(0, max_counts, num=3)  # 3 ticks: 0, mid, max
+    ax_mut_counts.set_xticks(xticks)
+    ax_mut_counts.set_xticklabels([f"{int(tick)}" for tick in xticks], fontsize=5)
+
     plt.setp(ax_mut_counts.get_yticklabels(), visible=False)
     ax_mut_counts.set_xlabel("Mutation counts\nper gene", fontsize = 6)
     ax_mut_counts.tick_params(axis="x", direction="out", bottom=True, top = True, colors='k')
     ax_mut_counts.tick_params(axis='y', which='both', left=False, right = False)
     
-    ax_mut_counts.set_ylim(-1, ax_mut_counts.get_yticks().max()+0.5)
+    ax_mut_counts.set_ylim(-0.3, ax_mut_counts.get_yticks().max()+0.5)
     
-    # Plot the vafs of mutations
+    # Plot the vafs of mutations with dynamic xlim for vaf%
     if logscale:
-        vaf_df["vaf_col_log"] = np.log10(vaf_df[vaf_col])
-        ax_secondary.set_xlim((np.log10(0.25), np.log10(40)))
+        # Avoid log(0)
+        vaf_df["vaf_col_log"] = np.log10(vaf_df[vaf_col].replace(0, np.nan))
+        max_vaf = vaf_df[vaf_col].max()
+        ax_secondary.set_xlim(0, np.log10(max_vaf * 1.5))
         ax_secondary.set_xticks([])
         ax_secondary.set_xticks([np.log10(0.25), np.log10(2), np.log10(10), np.log10(40)])
         ax_secondary.set_xticklabels(["0.25", "2", "10", "40"], fontsize = 5)
     else:
-        ax_secondary.set_xlim((0, 100))
+        max_vaf = vaf_df[vaf_col].max()
+        ax_secondary.set_xlim(0, max_vaf * 1.5)
         ax_secondary.set_xticks([])
-        ax_secondary.set_xticks([0, 50, 100])
-        ax_secondary.set_xticklabels(["0", "50", "100"], fontsize = 5)
+        ax_secondary.set_xticks([0, 25, 50, 75, 100])
+        ax_secondary.set_xticklabels(["0", "25", "50", "75", "100"], fontsize = 5)
+
     vaf_df = vaf_df.reset_index()
     for i, row in vaf_df.iterrows():
         if not np.isnan(row["Order on oncoprint"]):
             jitter = np.random.uniform(-0.08, 0.08)
-            ax_secondary.scatter(row["vaf_col_log"], row["Order on oncoprint"] +bar_height/2 + jitter, s = 0.5, color = "black", alpha = 0.5)
+            ax_secondary.scatter(row["vaf_col_log"], row["Order on oncoprint"] + bar_height/2 + jitter, s = 0.6, color = "black", alpha = 0.5)
     
     # Indicate the median VAF per gene on the plot.
     if show_median:
@@ -64,6 +74,11 @@ def plot_mut_counts_per_gene(mut_counts_df, vaf_df, ax_mut_counts, mut_dict, bar
     ax_secondary.spines[["top", "right", "bottom", "left"]].set_linewidth(0.5)
     ax_mut_counts.tick_params(width=0.5)
     ax_mut_counts.spines[["top", "right", "bottom", "left"]].set_linewidth(0.5)
+    
+    # Remove the doubled ticks
+    ax_secondary.tick_params(axis='x', bottom=False, labelbottom=False)
+    ax_mut_counts.tick_params(axis='x', top=False, labeltop=False)
+
     return [ax_mut_counts, ax_secondary]
 
 def plot_mut_counts_per_patient(ax_mut_counts_patient, pt_counts, bar_width):
@@ -72,7 +87,7 @@ def plot_mut_counts_per_patient(ax_mut_counts_patient, pt_counts, bar_width):
     plt.setp(ax_mut_counts_patient.get_xticklabels(), visible=False)
     ax_mut_counts_patient.tick_params(axis='x', which='both', left=False)
     remove_frame(ax_mut_counts_patient, ["top", "right"])
-    ax_mut_counts_patient.set_ylabel("Mutation\ncounts", rotation = 0, labelpad = 5, fontsize = 6)
+    ax_mut_counts_patient.set_ylabel("Mutation\ncounts", rotation = 0, labelpad = 5, fontsize = 6, va='center', ha='right')
     ax_mut_counts_patient.set_ylim(0, 15)
     ax_mut_counts_patient.set_yticks([0, 5, 10])
     ax_mut_counts_patient.set_yticklabels(["0", "5", "10"])
@@ -187,7 +202,7 @@ def add_legend_simple(mut_dict, ax, ncol=1):
     legend_labels = mut_dict.keys()
     legend_handles = [plt.Line2D([0], [0], marker='s', color=color, label=label, markersize=2, linestyle='') for color, label in zip(legend_colors, legend_labels)]
     legend_handles.append(Line2D([0], [0], marker='D', color='black', markersize=2, label='4 or more mutations'))
-    ax.legend(handles=legend_handles, loc="upper right", frameon=False, fontsize = 4, handlelength=2, handletextpad = 0.1, ncol=ncol)
+    ax.legend(handles=legend_handles, loc="upper right", frameon=False, fontsize = 4, handlelength=2, handletextpad = 0.4, ncol=ncol)
     
     ax.spines[["top", "right", "bottom", "left"]].set_visible(False)
     ax.tick_params(axis='x', which='both', bottom=False, labelbottom=False)
@@ -821,10 +836,10 @@ def plot_highest_VAF_per_patient(ax_max_vaf, muts_df, samples_enumerated, bar_wi
     ax_max_vaf.tick_params(width=0.5)
     ax_max_vaf.tick_params(axis='x', bottom=False, labelbottom=False)
     
-    ax_max_vaf.set_ylim((0, 30))
-    ax_max_vaf.set_yticks([0, 15, 30])
-    ax_max_vaf.set_yticklabels(["0", "15", "30"], fontsize = 4)
-    ax_max_vaf.set_ylabel("Max CH\nVAF%", rotation = 0, fontsize = 6)
+    ax_max_vaf.set_ylim((0, 50))
+    ax_max_vaf.set_yticks([0, 25, 50])
+    ax_max_vaf.set_yticklabels(["0", "25", "50"], fontsize = 4)
+    ax_max_vaf.set_ylabel("Max CH\nVAF%", rotation = 0, fontsize = 6, va='center', ha='right')
     return(ax_max_vaf)
 
 def add_gene_group_annotations(ax_main, bar_height): 
