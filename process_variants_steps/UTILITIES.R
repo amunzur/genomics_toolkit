@@ -394,6 +394,10 @@ combine_tumor_wbc <- function(vars, path_paired_samples){
 
     # Read sample pairs
     pairs <- read_delim(path_paired_samples, delim="\t", col_types = cols(.default = "c"))
+	tumor_col <- intersect(c("cfDNA", "FiT", "utDNA"), colnames(pairs))
+	if (length(tumor_col) == 0) {
+	  stop("No cfDNA, FiT, or utDNA column found in 'pairs'.")
+	}
     
     # Split vars into tumor and WBC
     tumor <- vars %>% filter(Sample_type %in% c("cfDNA", "utDNA"))
@@ -404,7 +408,7 @@ combine_tumor_wbc <- function(vars, path_paired_samples){
 	
     for(i in seq_len(nrow(pairs))){
       wbc_sample <- pairs$WBC[i]
-      tumor_sample <- pairs$cfDNA[i]
+      tumor_sample <- pairs[[tumor_col]][i]
     
       tumor_sub <- tumor %>% filter(Sample_name == tumor_sample)
       wbc_sub   <- wbc   %>% filter(Sample_name == wbc_sample)
@@ -591,11 +595,21 @@ parse_anno_output <- function(DIR_variant_tables, mode, variant_caller, PATH_sam
 		} 
 	} else {
 		# We subset to a certain group of samples.
+		# sample_df <- as.data.frame(read_delim(PATH_sample_list, delim = "\t"))
+		# samples <- c(sample_df$cfDNA, sample_df$WBC)
 		sample_df <- as.data.frame(read_delim(PATH_sample_list, delim = "\t"))
-		samples <- c(sample_df$cfDNA, sample_df$WBC)
-
+		cf_col <- intersect(c("cfDNA", "FiT", "utDNA"), colnames(sample_df)) # find which column corresponds to cfDNA/FiT/utDNA
+		if (length(cf_col) == 0) {
+		  stop("No cfDNA, FiT, or utDNA column found in the sample list.")
+		}
+		samples <- c(sample_df[[cf_col]], sample_df$WBC) %>% unlist() %>% as.character()
+		
 		# List files in the directory matching the samples
 		files_to_load <- list.files(DIR_variant_tables, full.names = TRUE, pattern = ".tsv$") # all files in the dir
+		if (length(files_to_load) == 0) {
+  			stop("No variant table files found in the directory matching the samples!")
+		}
+
 		files_to_load <- files_to_load[sapply(files_to_load, function(file) any(sapply(samples, grepl, file)))] # choose a subset based on the provided samples file
 		
 		if (mode == "somatic") {
@@ -607,9 +621,13 @@ parse_anno_output <- function(DIR_variant_tables, mode, variant_caller, PATH_sam
 	anno_df <- as.data.frame(do.call(rbind, anno_df_list))
 	
 	# Add the patient ID
-	x <- str_split(anno_df$Sample_name, "_gDNA|_WBC|_cfDNA|_utDNA")
+	if ("Sample_name" %in% colnames(anno_df)) {
+		x <- str_split(anno_df$Sample_name, "_gDNA|_WBC|_cfDNA|_utDNA")
+	} else {
+		x <- str_split(anno_df$Sample_name_t, "_gDNA|_WBC|_cfDNA|_utDNA")
+	}
 	anno_df$Patient_id <- unlist(lapply(x, "[", 1))
-	anno_df$Patient_id <- gsub("GU-|GUBB-", "", anno_df$Patient_id)
+	# anno_df$Patient_id <- gsub("GU-|GUBB-", "", anno_df$Patient_id)
 	anno_df <- anno_df %>% select(Patient_id, everything()) # Move to first col
 	
 	return(anno_df)
@@ -673,7 +691,7 @@ return_anno_output_mutect_somatic <- function(PATH_variant_table) {
 			   Depth_t = Ref_forward_t + Ref_reverse_t + Alt_forward_t + Alt_reverse_t, 
 			   Depth_n = Ref_forward_n + Ref_reverse_n + Alt_forward_n + Alt_reverse_n, 
 			   tumor_to_normal_VAF_ratio = VAF_t/VAF_n) %>%
-		select(Patient_id, Sample_name_t, Date_collected, CHROM, POS, REF, ALT, TYPE, VAF_t, Depth_t, Alt_forward_t, Ref_forward_t, Alt_reverse_t, Ref_reverse_t, Func.refGene, Gene.refGene, ExonicFunc.refGene, 
+		select(Sample_name_t, Date_collected, CHROM, POS, REF, ALT, TYPE, VAF_t, Depth_t, Alt_forward_t, Ref_forward_t, Alt_reverse_t, Ref_reverse_t, Func.refGene, Gene.refGene, ExonicFunc.refGene, 
 		AAChange.refGene, cosmic97_coding, avsnp150, gnomad40_exome_AF, CLNALLELEID, CLNSIG, Sample_name_n, VAF_n, Depth_n, Alt_forward_n, Ref_forward_n, Alt_reverse_n, Ref_reverse_n, tumor_to_normal_VAF_ratio)
 
 	names(df) <- c("Sample_name_t", "Date_collected", "Chrom", "Position", "Ref", "Alt", "Type", "VAF_t", "Depth_t", "Alt_forward_t", "Ref_forward_t", "Alt_reverse_t", "Ref_reverse_t", "Function", "Gene", "Consequence", 
@@ -810,7 +828,7 @@ return_anno_output_vardict_somatic <- function(PATH_variant_table) {
 		  		 separate(cfDNA_RD, into = c("Ref_forward_t", "Ref_reverse_t"), sep = ",", remove = TRUE) %>%
 		  		 separate(WBC_ALD, into = c("Alt_forward_n", "Alt_reverse_n"), sep = ",", remove = TRUE) %>%
 		  		 separate(WBC_RD, into = c("Ref_forward_n", "Ref_reverse_n"), sep = ",", remove = TRUE) %>%
-				 select(Patient_id, Sample_name_t, Date_collected, STATUS, CHROM, POS, REF, ALT, TYPE, VAF_t, Depth_t, Alt_forward_t, Ref_forward_t, Alt_reverse_t, Ref_reverse_t, Func.refGene, Gene.refGene, ExonicFunc.refGene, 
+				 select(Sample_name_t, Date_collected, STATUS, CHROM, POS, REF, ALT, TYPE, VAF_t, Depth_t, Alt_forward_t, Ref_forward_t, Alt_reverse_t, Ref_reverse_t, Func.refGene, Gene.refGene, ExonicFunc.refGene, 
 				 AAChange.refGene, cosmic97_coding, avsnp150, gnomad40_exome_AF, CLNALLELEID, CLNSIG, Sample_name_n, VAF_n, Depth_n, Alt_forward_n, Ref_forward_n, Alt_reverse_n, Ref_reverse_n, tumor_to_normal_VAF_ratio) %>%
 				 mutate(across(c(VAF_t, Depth_t, Alt_forward_t, Alt_reverse_t, Ref_forward_t, Ref_reverse_t, VAF_n, Depth_n, Alt_forward_n, Alt_reverse_n, Ref_forward_n, Ref_reverse_n), as.numeric))
 
