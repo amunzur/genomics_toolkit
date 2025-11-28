@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-For a given list of samples, generate sbatch scripts to run gridss on them.
+For a given list of samples, generate sbatch scripts to run gridss.
 
 /groups/wyattgrp/users/amunzur/toolkit/SLURM_run_gridss.py \
 --dir_working /groups/wyattgrp/users/amunzur/ecdna_project/sv \
@@ -52,16 +52,17 @@ def main():
     known_hotspot_file="/groups/wyattgrp/users/amunzur/useful_data/gripss_pon/v5_34/ref/38/sv/known_fusions.38.bedpe"
     repeat_mask_file="/groups/wyattgrp/users/amunzur/useful_data/gripss_pon/v5_34/ref/38/sv/repeat_mask_data.38.fa.gz"
     
-    gridss_command=f"gridss --jar ~/anaconda3/envs/gridss/share/gridss-2.11.1-1//gridss.jar\\\n\
-    --workingdir {dir_working_sample}\\\n\
-    --threads 16\\\n\
-    --jvmheap 32G\\\n\
-    --otherjvmheap 32G\\\n\
-    --reference {path_reference}\\\n\
-    --output {path_output}\\\n\
-    --assembly {path_assembly}\\\n\
-    {args.path_wbc_bam}\\\n\
-    {args.path_cfdna_bam}\n"
+    gridss_command = f"""gridss --jar /groups/wyattgrp/users/amunzur/software/anaconda3/envs/gridss/share/gridss-2.11.1-1/gridss.jar \
+        --workingdir {dir_working_sample} \
+        --threads 16 \
+        --jvmheap 32G \
+        --otherjvmheap 32G \
+        --reference {path_reference} \
+        --output {path_output} \
+        --assembly {path_assembly} \
+        {args.path_wbc_bam} \
+        {args.path_cfdna_bam}
+    """
 
     wbc_name=os.path.basename(args.path_wbc_bam).replace(".bam", "")
     cfDNA_name=os.path.basename(args.path_cfdna_bam).replace(".bam", "")
@@ -71,6 +72,10 @@ def main():
     -reference {wbc_name}\\\n\
     -ref_genome_version 38\\\n\
     -ref_genome {path_reference}\\\n\
+    -min_qual_break_end 200 \
+    -min_qual_break_point 200 \
+    -min_normal_coverage 0 \
+    -min_tumor_af 0.00000000001 \
     -filter_sgls\\\n\
     -pon_sgl_file {pon_sgl_file}\\\n\
     -pon_sv_file {pon_sv_file}\\\n\
@@ -88,7 +93,7 @@ def main():
     
     with open(path_batch_file, 'a') as file:
         file.write('#!/bin/bash\n')
-        file.write(f'#SBATCH --job-name=GRIDSS\n')
+        file.write(f'#SBATCH --job-name={sample_name}\n')
         file.write('#SBATCH --cpus-per-task=8\n')
         file.write('#SBATCH --mem=64G\n')
         file.write('#SBATCH --time=UNLIMITED\n')
@@ -96,12 +101,12 @@ def main():
         file.write(f'#SBATCH --output {path_log}\n')
         file.write('\n')
         # file.write("start_time=$(date +%s)\n")
-        file.write('source /home/amunzur/anaconda3/etc/profile.d/conda.sh\n')
+        file.write('source /groups/wyattgrp/users/amunzur/software/anaconda3/etc/profile.d/conda.sh\n')
         file.write('\n')
         file.write('#RUN GRIDSS\n')
         file.write('conda activate gridss\n')
         file.write('\n')
-        # file.write(gridss_command)
+        file.write(gridss_command)
         file.write('\n')
         file.write('#RUN GRIPSS\n')
         file.write('conda activate gripss\n')
@@ -113,7 +118,7 @@ def main():
         # file.write(f"echo 'Job finished in $elapsed_time seconds' >> {path_log}\n")
 
     
-    print(f"BATCH: {path_batch_file}")
+    print(f"sbatch {path_batch_file}")
 
 if __name__ == "__main__":
     main()
