@@ -7,7 +7,9 @@ parser$add_argument('--consensus', type = 'character', required = FALSE, help = 
 parser$add_argument('--caller', type = 'character', required = TRUE, help = 'Caller name (freebayes, Mutect2 or Vardict)')
 parser$add_argument('--type', type = 'character', required = TRUE, help = 'Type (chip or somatic)')
 parser$add_argument('--combine_tumor_and_wbc', type = 'character', required = TRUE, help = 'Boolean')
-parser$add_argument('--min_alt_reads', type = 'integer', required = TRUE, help = 'Mininum number of alt reads')
+parser$add_argument('--min_alt_reads_n', type = 'integer', required = FALSE, default=5, help = 'Mininum number of alt reads in the WBC samples')
+parser$add_argument('--min_alt_reads_t', type = 'integer', required = FALSE, default=5, help = 'Mininum number of alt reads in the tumor samples')
+parser$add_argument('--min_VAF_low', type = 'double', required = FALSE, default=0.0025, help = 'Mininum VAF detection threshold in WBC samples')
 parser$add_argument('--forced_rerun', type = 'character', required = TRUE, help = 'Boolean.')
 parser$add_argument('--working_dir', type = 'character', required = TRUE, help = 'Working directory where outputs will be saved.')
 parser$add_argument('--exclude_nonpathogenic_germline', action = 'store_true', help = 'Flag to set exclude_nonpathogenic_germline to TRUE if provided.')
@@ -15,7 +17,7 @@ parser$add_argument('--do_not_impose_vaf_upper_limit', action = 'store_true', he
 parser$add_argument('--keyword_for_output_files', type = 'character', required = FALSE, help = 'Output files will have this keyword if provided by user.')
 parser$add_argument('--PATH_sample_list', type = 'character', required = FALSE, help = 'Paired WBC cfDNA samples list, tab delim file. Each row has one sample pair.')
 parser$add_argument('--PATH_bg', type = 'character', required = FALSE, help = 'CH background error rate file.')
-parser$add_argument('--PATH_bg_ctDNA', type = 'character', required = FALSE, help = 'ctDNA background error rate file.')
+# parser$add_argument('--PATH_bg_ctDNA', type = 'character', required = FALSE, help = 'ctDNA background error rate file.')
 
 args <- parser$parse_args()
 
@@ -28,7 +30,9 @@ if (is.null(args$consensus)) {
 
 variant_caller <- args$caller
 type <- args$type
-min_alt_reads <- args$min_alt_reads
+min_alt_reads_n <- args$min_alt_reads_n
+min_alt_reads_t <- args$min_alt_reads_t
+min_VAF_low <- args$min_VAF_low
 working_dir <- args$working_dir
 combine_tumor_and_wbc <- tolower(args$combine_tumor_and_wbc) == 'true'
 forced_rerun <- tolower(args$forced_rerun) == 'true'
@@ -37,14 +41,15 @@ do_not_impose_vaf_upper_limit <- args$do_not_impose_vaf_upper_limit
 keyword_for_output_files <- args$keyword_for_output_files
 PATH_sample_list <- args$PATH_sample_list
 PATH_bg <- args$PATH_bg
-PATH_bg_ctDNA <- args$PATH_bg_ctDNA
+# PATH_bg_ctDNA <- args$PATH_bg_ctDNA
 
 # Print arguments (for testing purposes)
 cat("Consensus:", consensus, "\n")
 cat("Caller:", variant_caller, "\n")
 cat("Type:", type, "\n")
 cat("combine_tumor_and_wbc:", combine_tumor_and_wbc, "\n")
-cat("min_alt_reads:", min_alt_reads, "\n")
+cat("min_alt_reads_n:", min_alt_reads_n, "\n")
+cat("min_alt_reads_t:", min_alt_reads_t, "\n")
 cat("forced_rerun:", forced_rerun, "\n")
 cat("working_dir:", working_dir, "\n")
 cat("Keyword for output files:", keyword_for_output_files, "\n")
@@ -105,16 +110,17 @@ chroms <- paste0("chr", c(as.character(1:22), "X", "Y"))
 bg <- read_delim(PATH_bg, delim = "\t", col_types = cols(CHROM = col_character())) %>%
 	  filter(CHROM %in% chroms)
 	  
-bg_ctDNA <- read_delim(PATH_bg_ctDNA, delim = "\t", col_types = cols(chrom = col_character())) %>%
-	  rename(CHROM = chrom, POS = pos, REF = ref) %>%
-	  filter(CHROM %in% chroms)
+# bg_ctDNA <- read_delim(PATH_bg_ctDNA, delim = "\t", col_types = cols(chrom = col_character())) %>%
+# 	  rename(CHROM = chrom, POS = pos, REF = ref) %>%
+# 	  filter(CHROM %in% chroms)
 
 #########################################################################################
 # CHIP
-min_alt_reads <- min_alt_reads
+min_alt_reads_n <- min_alt_reads_n
+min_alt_reads_t <- min_alt_reads_t
 min_depth <- 200
 min_VAF_bg_ratio <- 10
-min_VAF_low <- 0.0025
+min_VAF_low <- min_VAF_low
 max_VAF_low <- 0.45
 min_VAF_high <- 0.55
 max_VAF_high <- 0.90
@@ -133,8 +139,8 @@ if (is.null(keyword_for_output_files)) {
   keyword_for_output_files <- ""
 }
 PATH_before_filtering <- sprintf("variant_calling/%s/finalized/%s/CHIP_before_filtering.csv", variant_caller, consensus)
-PATH_after_filtering <- sprintf("variant_calling/%s/finalized/%s/min_alt_reads_%s_CHIP_after_filtering%s%s.csv", variant_caller, consensus, min_alt_reads, path_suffix, keyword_for_output_files)
-PATH_final_chip <- sprintf("variant_calling/%s/finalized/%s/min_alt_reads_%s_CHIP_final%s%s.csv", variant_caller, consensus, min_alt_reads, path_suffix, keyword_for_output_files)
+PATH_after_filtering <- sprintf("variant_calling/%s/finalized/%s/minaltreadst_%s_CHIP_after_filtering%s_%s.csv", variant_caller, consensus, min_alt_reads_t, path_suffix, keyword_for_output_files)
+PATH_final_chip <- sprintf("variant_calling/%s/finalized/%s/minaltreadst_%s_CHIP_final%s_%s.csv", variant_caller, consensus, min_alt_reads_t, path_suffix, keyword_for_output_files)
 
 if (!dir.exists(sprintf("variant_calling/%s/finalized/%s/", variant_caller, consensus))) {
   dir.create(sprintf("variant_calling/%s/finalized/%s/", variant_caller, consensus), recursive = TRUE)
@@ -164,7 +170,9 @@ min_VAF_bg_ratio <- 10
 DIR_variant_tables_somatic <- sprintf("data/variant_tables/%s/%s/%s", tolower(type), variant_caller, consensus)
 DIR_mpileup_filtered_somatic <- sprintf("metrics/mpileup_filtered_%s/somatic/%s", consensus, variant_caller)
 PATH_before_filtering_somatic <- sprintf("variant_calling/%s/finalized/%s/SOMATIC_before_filtering.csv", variant_caller, consensus)
-PATH_final_somatic <- sprintf("variant_calling/%s/finalized/%s/SOMATIC_final_%s.csv", variant_caller, consensus, keyword_for_output_files)
+PATH_final_somatic <- sprintf("variant_calling/%s/finalized/%s/SOMATIC_final%s.csv", variant_caller, consensus,
+ifelse(is.null(keyword_for_output_files) || keyword_for_output_files == "", "", paste0("_", keyword_for_output_files))
+)
 
 if (!dir.exists(sprintf("variant_calling/%s/finalized/%s", variant_caller, consensus))) {
   dir.create(sprintf("variant_calling/%s/finalized/%s", variant_caller, consensus), recursive = TRUE)
@@ -183,7 +191,7 @@ if (toupper(type) == "CHIP"){
 		# vars <- evaluate_strand_bias2(vars)
 		# write_csv(vars, PATH_before_filtering)
 	}
-	vars <- filter_variants_chip_or_germline("chip", vars, min_alt_reads, min_depth, min_VAF_low, max_VAF_low, min_VAF_high, max_VAF_high, min_VAF_bg_ratio, PATH_blacklist, blacklist = TRUE, filter_by_min_depth = FALSE)
+	vars <- filter_variants_chip_or_germline("chip", vars, min_alt_reads_n, min_alt_reads_t, min_depth, min_VAF_low, max_VAF_low, min_VAF_high, max_VAF_high, min_VAF_bg_ratio, PATH_blacklist, blacklist = TRUE, filter_by_min_depth = FALSE)
 	# vars <- add_N_fraction(vars, DIR_mpileup, DIR_mpileup_filtered_chip, force = FALSE)
 	vars$Variant_caller <- variant_caller
 	write_csv(vars, PATH_after_filtering)
@@ -202,7 +210,7 @@ if (toupper(type) == "CHIP"){
 	if (forced_rerun || !file.exists(PATH_before_filtering_somatic)) {
 		vars <- parse_anno_output(DIR_variant_tables_somatic, "somatic", variant_caller, PATH_sample_list = PATH_sample_list)
 		# vars <- add_patient_information_somatic(vars, PATH_sample_information)
-		vars <- add_bg_error_rate(vars, bg_ctDNA)
+		vars <- add_bg_error_rate(vars, bg)
 		vars <- add_AAchange_effect(vars, variant_caller)
 		vars <- evaluate_strand_bias2(vars)
 		write_csv(vars, PATH_before_filtering_somatic)
