@@ -527,19 +527,28 @@ add_N_fraction <- function(vars, DIR_mpileup, DIR_mpileup_filtered, force) {
 
 }
 
-filter_variants_chip_or_germline <- function(mode, vars, min_alt_reads, min_depth, min_VAF_low, max_VAF_low, min_VAF_high, max_VAF_high, min_VAF_bg_ratio, PATH_blacklist, blacklist = TRUE, filter_by_min_depth = TRUE) {
+filter_variants_chip_or_germline <- function(mode, vars, min_alt_reads_n, min_alt_reads_t, min_depth, min_VAF_low, max_VAF_low, min_VAF_high, max_VAF_high, min_VAF_bg_ratio, PATH_blacklist, blacklist = TRUE, filter_by_min_depth = TRUE) {
 	vars$VAF_bg_ratio <- na.fill(vars$VAF_bg_ratio, fill = 9999999)
 	# When gnomad is undefined replace it with 0.
 	vars$gnomad40_exome_AF <- as.numeric(vars$gnomad40_exome_AF)
 	mask <- is.na(vars$gnomad40_exome_AF)
 	vars$gnomad40_exome_AF[mask] <- 0
-	
-	vars <- vars %>% 
-			mutate(Status = toupper(mode)) %>% 
-			filter(Alt_forward + Alt_reverse >= min_alt_reads,
-			       VAF_bg_ratio >= min_VAF_bg_ratio, 
-				   gnomad40_exome_AF < 0.0005)
-	
+		
+	vars <- vars %>%
+    mutate(
+        Status = toupper(mode),
+        min_alt_reads_row = case_when(
+            Sample_type %in% c("utNA", "FFPE", "cfDNA") ~ min_alt_reads_t,
+            Sample_type == "WBC"                        ~ min_alt_reads_n,
+            TRUE ~ min_alt_reads_t   # fallback if unexpected type
+        )
+    ) %>%
+    filter(
+        Alt_forward + Alt_reverse >= min_alt_reads_row,
+        VAF_bg_ratio >= min_VAF_bg_ratio,
+        gnomad40_exome_AF < 0.0005
+    )
+		
 	if (filter_by_min_depth) {
 		vars <- vars %>% 
 			filter(Alt_forward + Ref_forward + Alt_reverse + Ref_reverse >= min_depth)
