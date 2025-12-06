@@ -31,21 +31,12 @@ mpl.rcParams['xtick.labelsize'] = 10
 mpl.rcParams['ytick.labelsize'] = 10
 mpl.rcParams['axes.labelsize'] = 10
 
-source_functions = "/groups/wyattgrp/users/amunzur/toolkit/plotting_UTILITIES.py"
+source_functions = "/groups/wyattgrp/users/amunzur/toolkit/visualization/plotting_UTILITIES.py"
 with open(source_functions, 'r') as file:
     script_code = file.read()
 
 exec(script_code)
 
-"""
-python /groups/wyattgrp/users/amunzur/toolkit/Make_basic_plots_one_group.py \
-    --path_muts /groups/wyattgrp/users/amunzur/ironman_ch/results/variant_calling/CHIP_SSCS2_curated.csv \
-    --vafcolname VAF \
-    --path_sample_information /groups/wyattgrp/users/amunzur/ironman_ch/resources/sample_lists/sample_information.tsv \
-    --dir_figures /groups/wyattgrp/users/amunzur/ironman_ch/results/figures \
-    --barcolor deepskyblue \
-    --keyword IRONMAN
-"""
 
 def main():
     parser = argparse.ArgumentParser(description="Make exploratory plots for CH ina given cohort.")
@@ -65,10 +56,14 @@ def main():
     keyword=args.keyword
     
     muts=pd.read_csv(path_muts)
+    # muts[vafcolname]=muts[vafcolname].astype(float)
+    
     if muts[vafcolname].min()<0.25:
         muts[vafcolname]=muts[vafcolname]*100
+    
     if "VAF_n" in muts.columns and muts["VAF_n"].min()<0.25:
         muts["VAF_n"]=muts["VAF_n"]*100
+    
     if "VAF_t" in muts.columns and muts["VAF_t"].min()<0.25:
         muts["VAF_t"]=muts["VAF_t"]*100
     
@@ -85,15 +80,36 @@ def main():
     
     # 1. VAF CORRELATION
     if "VAF_t" in muts.columns and "VAF_n" in muts.columns:
-        ax2 = plt.subplot(inner_inner_left_top_gs1[1])
-        ax2 = plot_vaf_scatter(muts, ax2, annotate_genes = False, vafcolname=vafcolname)
-        ax2.set_xlim((0, 100))
-        ax2.set_ylim((0, 100))
-        ax2.set_xticks([0, 25, 50, 75, 100])
-        ax2.set_yticks([0, 25, 50, 75, 100])
-        ax2.set_xticklabels([0, 25, 50, 75, 100])
-        ax2.set_yticklabels([0, 25, 50, 75, 100])
+        if not muts["VAF_t"].dropna().empty and not muts["VAF_n"].dropna().empty:
+            vt = muts["VAF_t"].dropna()
+            vn = muts["VAF_n"].dropna()
+        
+        if not vt.empty and not vn.empty:
+            ax2 = plt.subplot(inner_inner_left_top_gs1[1])
+            ax2 = plot_vaf_scatter(muts, ax2, annotate_genes=False)
+            
+            # Dynamic ax lims
+            vmax = max(vt.max(), vn.max())
+            upper = int(np.ceil(vmax / 5.0) * 5) # nearest 5 as upper lim
+            if upper < 5:
+                upper = 5
+            
+            ax2.set_xlim(0, upper)
+            ax2.set_ylim(0, upper)
+            tick_step = 5 if upper >= 10 else 1
+            ticks = np.arange(0, upper + tick_step, tick_step)
+            ax2.set_xticks(ticks)
+            ax2.set_yticks(ticks)
+            ax2.set_xticklabels(ticks)
+            ax2.set_yticklabels(ticks)
+            ax2.set_aspect('equal', adjustable='box')
+            outer_gs.tight_layout(fig)
+    else:
+        fig, ax = plt.subplots(figsize=(6, 4))
+        ax2.axis("off")  # hide the plot axes
+        ax2.text(0.5, 0.5,"Unpaired calling.\nCannot generate correlation plot.",ha="center",va="center",fontsize=14,transform=ax.transAxes)
         outer_gs.tight_layout(fig)
+    
     # fig.savefig("/groups/wyattgrp/users/amunzur/lu_chip/results/figures/exploration/therap_figure1.png")
     
     # 2. CH PRESENCE ABSENCE PERCENTAGE
@@ -116,6 +132,7 @@ def main():
     ax_swarm = plt.subplot(gs_genes[1], sharey = ax_genes)
     
     # gene_list = ["FLT3", "TERT", 'SH2B3', 'BRCC3', 'STAG2', 'KDM6A', 'KMT2D', 'GNAS', 'CHEK2', 'ATM', 'TP53', 'ASXL1', 'PPM1D', 'TET2', 'DNMT3A']
+    gene_list=muts["Gene"].unique()
     gene_list = ["FLT3", "TERT", 'SH2B3', 'SRSF2', 'SF3B1', 'BRCC3', 'STAG2', 'KDM6A', 'KMT2D', 'GNAS', 'CHEK2', 'ATM', 'TP53', 'ASXL1', 'PPM1D', 'TET2', 'DNMT3A']
     
     ax_genes, gene_order=plot_gene_counts_UNGROUPED_single_ax(muts=muts, ax=ax_genes, gene_list = gene_list, ntotal_pts = ntotal_pts, use_entire_denom = True, barcolor=barcolor)
@@ -133,13 +150,18 @@ def main():
     fig.tight_layout()
     fig.savefig(os.path.join(dir_figures, "baseline_gene_counts_nmuts_per_patient.png"))
     fig.savefig(os.path.join(dir_figures, "baseline_gene_counts_nmuts_per_patient.pdf"))
+    
+    print(f"Saved to {os.path.join(dir_figures, f"{keyword}_CH_figures.png")}")
 
 if __name__ == "__main__":
     main()
 
-# path_muts="/groups/wyattgrp/users/amunzur/prince_ch/results/variant_calling/CHIP_SSCS2_curated.csv"
-# vafcolname="VAF_n"
-# path_sample_information="/groups/wyattgrp/users/amunzur/prince_ch/resources/sample_lists/sample_information.tsv"
-# dir_figures="/groups/wyattgrp/users/amunzur/prince_ch/results/figures"
-# barcolor="deepskyblue"
-# keyword="PRINCE"
+"""
+python Make_basic_plots_one_group.py \
+    --path_muts /path/to/ch.csv \
+    --vafcolname VAF_t \
+    --path_sample_information /path/to/sample_information.tsv \
+    --dir_figures /dir/figures \
+    --barcolor deepskyblue \
+    --keyword Samples
+"""
