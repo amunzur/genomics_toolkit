@@ -89,6 +89,7 @@ def main():
     parser = argparse.ArgumentParser(description="Makes oncoprint.")
     parser.add_argument("--path_muts", required=True, help="Path to curated mutation list.")
     parser.add_argument("--dir_figures", required=True, help="DIR where the figures will be saved.")
+    parser.add_argument("--path_gene_groups", required=False, default=None, help="Genes will be shown in this order in the oncoprint. Only genes in this list will be included.")
     parser.add_argument("--keyword", required=True, help="Will be included in the filename.")
     parser.add_argument("--vaf_colname", required=True, help="What is the name of the VAF column?")
     parser.add_argument("--figure_width", required=False, default=4, type=float, help="")
@@ -98,6 +99,7 @@ def main():
     
     path_muts=args.path_muts
     dir_figures=args.dir_figures
+    path_gene_groups=args.path_gene_groups
     keyword=args.keyword
     vaf_colname=args.vaf_colname
     figure_width=args.figure_width
@@ -110,8 +112,11 @@ def main():
     chip_main["Status"]="CHIP"
     # chip_main=chip_main[chip_main["Function"]!="upstream"]
     
-    if chip_main[vaf_colname].min()<0.25:
-        chip_main[vaf_colname]=chip_main[vaf_colname]*100
+    for col in ["VAF_n", "VAF_t", vaf_colname]:
+        if col in chip_main.columns:
+            chip_main[col] = pd.to_numeric(chip_main[col], errors='coerce')
+            if chip_main[col].min() < 0.25:
+                chip_main[col] = chip_main[col] * 100
     
     # if "VAF_t" in chip_main.columns and chip_main["VAF_t"].min()<0.25:
     #     chip_main["VAF_t"]=chip_main["VAF_t"]*100
@@ -150,12 +155,29 @@ def main():
          "nonsynonymous_snv": "missense"})
         
     # Compute gene ordering
-    path_gene_groups="/groups/wyattgrp/users/amunzur/rumble/Clonal-hematopoiesis-pipeline/resources/gene_groups.tsv"
+    # If custom gene order file not provided, use all genes in the df
+    if path_gene_groups is None:
+        all_genes=chip_main["Gene"].unique()
+        # Bring DNMT3A, TET2, ASXL1, ATM, CHEK2, TP53, PPM1D to the top in this order.
+        top_genes=["DNMT3A", "TET2", "ASXL1", "ATM", "CHEK2", "TP53", "PPM1D"]
+        non_top_genes=[g for g in all_genes if g not in top_genes]
+        all_genes_ordered=top_genes+non_top_genes
+        
+        # Generate tmp file
+        path_gene_groups=os.path.join(dir_figures, "path_gene_groups")
+        with open(path_gene_groups, 'a') as the_file:
+            for g in all_genes_ordered:
+                the_file.write(f'{g}\n')
+        
+        file.close()
+    
+    # path_gene_groups="/groups/wyattgrp/users/amunzur/prince_ch/Clonal-hematopoiesis-pipeline/resources/gene_groups.tsv"
     # genes_to_include = chip_main["Gene"].unique()
     # genes_to_include=["DNMT3A", "TET2", "ATM", "CHEK2", "PPM1D", "TP53", "GNAS", "KDM6A", "TERT", "FLT3", "NRAS", "BRCC3", "KMT2D", "MYD88", "GATA2", "CEBPA", "KRAS", "ASXL1", "SETDB1", "RUNX1", "SRSF2", "CUX1", "BCOR", "SH2B3", "BCORL1", "SETD2", "NF1"]
-    genes_to_include=['TET2', 'DNMT3A', 'ASXL1', 'KMT2D', 'TP53', 'ERBB2', 'BRCA2', 'ATM', 'RB1', 'FGFR3', 'BRCA1', 'TERT', 'NF1']
+    # genes_to_include=['TET2', 'DNMT3A', 'ASXL1', 'KMT2D', 'TP53', 'ERBB2', 'BRCA2', 'ATM', 'RB1', 'FGFR3', 'BRCA1', 'TERT', 'NF1']
     # gene_order_df=assign_mutation_values_singledf(genes = genes_to_include, muts_df=chip_main, bar_height=1, omit_missing_row = True, path_gene_groups=path_gene_groups)
     gene_order_df=assign_mutation_values_singledf_from_tsv(path_gene_groups)
+    genes_to_include=gene_order_df["Gene"].unique()
     ch_plotting_df=calculate_mutation_burden_per_gene(chip_main, samplenamecol="Patient_id").merge(gene_order_df, how = "inner")
     
     # CH dfs
@@ -207,7 +229,7 @@ def main():
     ax_mut_counts_patient = fig.add_subplot(gs[2, 0], sharex=ax_CH_vaf) 
     ax_main = fig.add_subplot(gs[6, 0], sharex = ax_mut_counts_patient)
     ax_mut_counts = fig.add_subplot(gs[6, 1], sharey = ax_main) 
-    ax_legend = fig.add_subplot(gs[8, 0], sharex = ax_main) 
+    # ax_legend = fig.add_subplot(gs[8, 0], sharex = ax_main) 
     
     bar_height = 0.6
     bar_width = 0.6
@@ -219,17 +241,19 @@ def main():
     [ax_mut_counts, ax_secondary] = plot_mut_counts_per_gene(ch_mut_counts, ch_vaf, ax_mut_counts, mut_dict, bar_height = bar_height, logscale = True, vaf_col = vaf_colname, show_median=False) # Plot CH mutations
     
     ax_mut_counts_patient = plot_mut_counts_per_patient_single_df(ax_mut_counts_patient, ch_pt_counts, bar_width)
-    ax_legend = add_legend_simple(mut_dict, ax_legend)
 
     # add figure legend
-    ax_legend = fig.add_axes([0.14, 0.03, 0.8, 0.1]) # [left, bottom, width, height] in figure coordinates
+    ax_legend = fig.add_axes([0.18, 0.01, 0.8, 0.1]) # [left, bottom, width, height] in figure coordinates
     ax_legend.axis('off')
+    ax_legend = add_legend_simple(mut_dict, ax_legend)
     
     fig.suptitle(figure_title)
     fig.subplots_adjust(top=0.92)
     fig.savefig(os.path.join(dir_figures, f"OP_{keyword}.pdf"), transparent=True)
     fig.savefig(os.path.join(dir_figures, f"OP_{keyword}.png"))
     
+    path_print=os.path.join(dir_figures, f"OP_{keyword}.png")
+    print(path_print)
     # print(f"SAVED TO {dir_figures}")
 
 if __name__ == "__main__":
