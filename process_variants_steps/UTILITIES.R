@@ -388,12 +388,12 @@ add_cfDNA_information <- function(variants_df, DIR_basecounts_DCS, DIR_basecount
 	return(variants_df)
 }
 
-combine_tumor_wbc <- function(vars, path_paired_samples){
+combine_tumor_wbc <- function(vars, PATH_sample_list){
 	# Same collection date set to TRUE will require matching entries for Timepoint and Date_collected columns.
-	# path_paired_samples is the absolute path to the tsv file where each row is one patient, with columns corresponding to WBC and cfDNA samples.
+	# PATH_sample_list is the absolute path to the tsv file where each row is one patient, with columns corresponding to WBC and cfDNA samples.
 
     # Read sample pairs
-    pairs <- read_delim(path_paired_samples, delim="\t", col_types = cols(.default = "c"))
+    pairs <- read_delim(PATH_sample_list, delim="\t", col_types = cols(.default = "c"))
 	tumor_col <- intersect(c("cfDNA", "FiT", "utDNA"), colnames(pairs))
 	if (length(tumor_col) == 0) {
 	  stop("No cfDNA, FiT, or utDNA column found in 'pairs'.")
@@ -636,6 +636,8 @@ parse_anno_output <- function(DIR_variant_tables, mode, variant_caller, PATH_sam
 		x <- str_split(anno_df$Sample_name_t, "_gDNA|_WBC|_cfDNA|_utDNA")
 	}
 	anno_df$Patient_id <- unlist(lapply(x, "[", 1))
+	# print("Print patient id")
+	# print(sample_df)
 	# anno_df$Patient_id <- gsub("GU-|GUBB-", "", anno_df$Patient_id)
 	anno_df <- anno_df %>% select(Patient_id, everything()) # Move to first col
 	
@@ -680,8 +682,10 @@ return_anno_output_mutect_somatic <- function(PATH_variant_table) {
 	df <- as.data.frame(read.delim(PATH_variant_table, stringsAsFactors = FALSE, check.names = FALSE))
 	df$Sample_name_n = str_split(colnames(df)[grep("WBC", colnames(df))][1], "\\.")[[1]][1]
 	colnames(df) <- gsub("^.*[_-]WBC[-_].*\\.", "WBC_", colnames(df)) 
+	colnames(df) <- gsub("^.*[_-]gDNA[-_].*\\.", "WBC_", colnames(df)) 
 	colnames(df) <- gsub("^.*[_-]cfDNA[-_].*\\.", "cfDNA_", colnames(df)) 
 	colnames(df) <- gsub("^.*[_-]FiT[-_].*\\.", "cfDNA_", colnames(df)) 
+	colnames(df) <- gsub("^.*[_-]utDNA[-_].*\\.", "cfDNA_", colnames(df)) 
 
 	df <- df %>%
 		separate(col = cfDNA_SB, sep = ",", into = c("Ref_forward_t", "Ref_reverse_t", "Alt_forward_t", "Alt_reverse_t"), remove = TRUE) %>%
@@ -811,13 +815,15 @@ return_anno_output_freebayes_chip <- function(PATH_variant_table) {
 # }
 
 return_anno_output_vardict_somatic <- function(PATH_variant_table) {
-
+	print(PATH_variant_table)
 	df <- as.data.frame(read.delim(PATH_variant_table, stringsAsFactors = FALSE, check.names = FALSE))
-	df$Sample_name_n = str_split(colnames(df)[grep("WBC", colnames(df))][1], "\\.")[[1]][1]
+	df$Sample_name_n = str_split(colnames(df)[grep("WBC|gDNA", colnames(df))][1], "\\.")[[1]][1]
 	colnames(df) <- gsub("^.*[_-]WBC[-_].*\\.", "WBC_", colnames(df)) 
+	colnames(df) <- gsub("^.*[_-]gDNA[-_].*\\.", "WBC_", colnames(df)) 
 	colnames(df) <- gsub("^.*[_-]cfDNA[-_].*\\.", "cfDNA_", colnames(df)) 
-	colnames(df) <- gsub("^.*[_-]FiT[-_].*\\.", "cfDNA_", colnames(df)) 
-
+	colnames(df) <- gsub("^.*[_-]FiT[-_].*\\.", "cfDNA_", colnames(df))
+	colnames(df) <- gsub("^.*[_-]utDNA[-_].*\\.", "cfDNA_", colnames(df))  
+	
 	# Indicate insertion, deletion or SNV
 	df <- df %>% mutate(Patient_id = gsub("GU-", "", str_split(file_path_sans_ext(basename(PATH_variant_table)), "_")[[1]][1]),
 						Sample_name_t = file_path_sans_ext(basename(PATH_variant_table)),
