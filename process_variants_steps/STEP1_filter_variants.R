@@ -139,8 +139,8 @@ if (is.null(keyword_for_output_files)) {
   keyword_for_output_files <- ""
 }
 PATH_before_filtering <- sprintf("variant_calling/%s/finalized/%s/CHIP_before_filtering.csv", variant_caller, consensus)
-PATH_after_filtering <- sprintf("variant_calling/%s/finalized/%s/minaltreadst_%s_CHIP_after_filtering%s_%s.csv", variant_caller, consensus, min_alt_reads_t, path_suffix, keyword_for_output_files)
-PATH_final_chip <- sprintf("variant_calling/%s/finalized/%s/minaltreadst_%s_CHIP_final%s_%s.csv", variant_caller, consensus, min_alt_reads_t, path_suffix, keyword_for_output_files)
+PATH_after_filtering <- sprintf("variant_calling/%s/finalized/%s/minaltreadst_%s_CHIP_after_filtering%s%s.csv", variant_caller, consensus, min_alt_reads_t, path_suffix, keyword_for_output_files)
+PATH_final_chip <- sprintf("variant_calling/%s/finalized/%s/minaltreadst_%s_CHIP_final%s%s.csv", variant_caller, consensus, min_alt_reads_t, path_suffix, keyword_for_output_files)
 
 if (!dir.exists(sprintf("variant_calling/%s/finalized/%s/", variant_caller, consensus))) {
   dir.create(sprintf("variant_calling/%s/finalized/%s/", variant_caller, consensus), recursive = TRUE)
@@ -212,13 +212,13 @@ if (toupper(type) == "CHIP"){
 		# vars <- add_patient_information_somatic(vars, PATH_sample_information)
 		vars <- add_bg_error_rate(vars, bg)
 		vars <- add_AAchange_effect(vars, variant_caller)
-		vars <- evaluate_strand_bias2(vars)
 		write_csv(vars, PATH_before_filtering_somatic)
 	} else {
 		vars <- read_csv(PATH_before_filtering_somatic)
 		# vars <- evaluate_strand_bias2(vars)
 		# write_csv(vars, PATH_before_filtering_somatic)
 	}
+	vars <- evaluate_strand_bias2(vars)
 	vars <- filter_somatic_variants(vars, min_alt_reads_t, max_alt_reads_n, min_depth_n, min_VAF_low_somatic, min_tumor_to_normal_vaf_ratio, min_VAF_bg_ratio, PATH_blacklist, blacklist = TRUE)
 	table(vars$Gene)
 	# vars <- add_N_fraction(vars, DIR_mpileup, DIR_mpileup_filtered_somatic, force = FALSE)
