@@ -40,51 +40,68 @@ def make_igv_batch_script(df, PATH_batch, DIR_snapshots, prefix, suffix, given_r
 	"""
 	Generate an IGV batch script to create snapshots of tumor and/or WBC BAM files.
 	"""
-	for index, row in df.iterrows(): # iterate through each snv in the variants file
+	os.makedirs(DIR_snapshots, exist_ok = True) 
+	if unpaired:
+		grouped=df.groupby("Sample_name")
+	else:
+		grouped=df.groupby(["Sample_name_n", "Sample_name_t"])
+	
+	with open(PATH_batch, 'a') as the_file:
+		the_file.write('new\n')
+		the_file.write('genome hg38\n') # only load the genome if it is the first time we are starting IGV
+		the_file.write(str("snapshotDirectory " + DIR_snapshots + '\n'))
+		the_file.write("\n")
 		
-		if "Path_bam" in df.columns and unpaired:
-			BAM_wbc = apply_prefix_suffix(row["Path_bam"], prefix, suffix)
-		elif "Path_bam" not in df.columns and unpaired:
-			BAM_wbc = apply_prefix_suffix(row["Sample_name"], prefix, suffix) # Can be tumor or WBC
-		elif "Path_bam" not in df.columns and not unpaired and "Sample_name_n" in df.columns and "Sample_name_n" in df.columns:
-			BAM_wbc = apply_prefix_suffix(row["Sample_name_n"], prefix, suffix)
-			BAM_tumor = apply_prefix_suffix(row["Sample_name_t"], prefix, suffix)
-		else:
-			BAM_wbc = apply_prefix_suffix(row["Path_bam_n"], prefix, suffix)
-			BAM_tumor = apply_prefix_suffix(row["Path_bam_t"], prefix, suffix)
-				
-		position = int(row["Position"])
-		
-		if given_range: # if the user wants to see a given range, consider the end position of the range as well
-			start_position = str(int(position - given_range/2))
-			end_position = str(int(position + given_range/2))	
-		
-		# os.remove(IGV_script)
-		os.makedirs(DIR_snapshots, exist_ok = True) # make the snapshost dir if it doesnt exist already
-		if unpaired:
-			output_file_name = row["Gene"] + "_" + str(row["Protein_annotation"]) + "_" + row["Chrom"] + "_" + str(row["Position"]) + "_" + row["Sample_name"] + ".png" # one snapshot for each variant		
-		else:
-			output_file_name = row["Gene"] + "_" + str(row["Protein_annotation"]) + "_" + row["Chrom"] + "_" + str(row["Position"]) + "_" + row["Sample_name_t"] + ".png" # one snapshot for each variant		
-		# Begin compiling the batch file
-		with open(PATH_batch, 'a') as the_file:
-			the_file.write('new\n')
-			if index == 0: the_file.write('genome hg38\n') # only load the genome if it is the first time we are starting IGV
-			if unpaired:
-				the_file.write(str("load " + BAM_wbc + '\n'))
+		for j, group in grouped:
+			# Load the bams once per sample
+			if "Path_bam" in df.columns and unpaired:
+				BAM_wbc = apply_prefix_suffix(group["Path_bam"].unique(), prefix, suffix)
+			elif "Path_bam_t" in df.columns:
+				BAM_wbc = apply_prefix_suffix(group["Path_bam_n"].unique(), prefix, suffix)
+				BAM_tumor = apply_prefix_suffix(group["Path_bam_t"].unique(), prefix, suffix)
+			elif "Path_bam" not in df.columns and unpaired:
+				BAM_wbc = apply_prefix_suffix(group["Sample_name"].unique(), prefix, suffix) # Can be tumor or WBC
+			elif "Path_bam" not in df.columns and not unpaired and "Sample_name_n" in df.columns and "Sample_name_n" in df.columns:
+				BAM_wbc = apply_prefix_suffix(group["Sample_name_n"].unique(), prefix, suffix)
+				BAM_tumor = apply_prefix_suffix(group["Sample_name_t"].unique(), prefix, suffix)
 			else:
-				the_file.write(str("load " + BAM_tumor + '\n'))
-				the_file.write(str("load " + BAM_wbc + '\n'))
-			the_file.write(str("snapshotDirectory " + DIR_snapshots + '\n'))
-			chrom = str(row["Chrom"])
-			if given_range: the_file.write(str('goto ' + chrom + ":" + start_position + "-" + end_position + "\n"))
-			else: the_file.write(str('goto ' + chrom + ":" + str(position) + "\n"))
-			the_file.write('sort start location\n')
-			the_file.write('sort base\n')
-			the_file.write('maxPanelHeight -1\n')
-			the_file.write(str('snapshot ' + output_file_name + '\n'))
-			the_file.write("\n")
-	with open(PATH_batch, 'a') as the_file: the_file.write('exit') # append an exit statement at the end so that IGV closes on its own
-	print("/home/amunzur/IGV_Linux_2.11.3/igv.sh --batch ", PATH_batch) # print the exact command needed to turn IGV to terminal
+				BAM_wbc = apply_prefix_suffix(group["Path_bam_n"].unique(), prefix, suffix)
+				BAM_tumor = apply_prefix_suffix(group["Path_bam_t"].unique(), prefix, suffix)
+			
+			the_file.write('new\n')
+			if unpaired:
+				the_file.write(str("load " + BAM_wbc[0] + '\n'))
+			else:
+				the_file.write(str("load " + BAM_tumor[0] + '\n'))
+				the_file.write(str("load " + BAM_wbc[0] + '\n'))
+			
+			for index, row in group.iterrows():
+				
+				# Determine PNG name
+				if unpaired:
+					output_file_name = row["Gene"] + "_" + str(row["Protein_annotation"]) + "_" + row["Chrom"] + "_" + str(row["Position"]) + "_" + row["Sample_name"] + ".png"
+				else:
+					output_file_name = row["Gene"] + "_" + str(row["Protein_annotation"]) + "_" + row["Chrom"] + "_" + str(row["Position"]) + "_" + row["Sample_name_t"] + ".png"
+				
+				position = int(row["Position"])
+				
+				if given_range: # if the user wants to see a given range, consider the end position of the range as well
+					start_position = str(int(position - given_range/2))
+					end_position = str(int(position + given_range/2))	
+				
+				
+				chrom = str(row["Chrom"])
+				if given_range: the_file.write(str('goto ' + chrom + ":" + start_position + "-" + end_position + "\n"))
+				else: the_file.write(str('goto ' + chrom + ":" + str(position) + "\n"))
+				the_file.write('sort start location\n')
+				the_file.write('sort base\n')
+				the_file.write('maxPanelHeight -1\n')
+				the_file.write(str('snapshot ' + output_file_name + '\n'))
+				the_file.write("\n")
+		
+		the_file.write('exit')
+		the_file.close()
+		print("/home/amunzur/IGV_Linux_2.11.3/igv.sh --batch ", PATH_batch) # print the exact command needed to turn IGV to terminal
 
 def main():
 	parser = argparse.ArgumentParser(description="Generate IGV batch script for tumor + WBC BAM visualization")
