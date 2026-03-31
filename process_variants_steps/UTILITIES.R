@@ -581,7 +581,7 @@ filter_variants_chip_or_germline <- function(mode, vars, min_alt_reads_n, min_al
 
 # FUNCTIONS TO LOAD VARIANT TABLES FROM ANNOVAR
 # do a merge based on column to combine metadata 
-parse_anno_output <- function(DIR_variant_tables, mode, variant_caller, PATH_sample_list = NULL) {
+parse_anno_output <- function(DIR_variant_tables, mode, variant_caller, PATH_sample_list = NULL, keyword_for_input_files=NULL) {
 
 	if (toupper(variant_caller) == "VARDICT") {
 		somatic_func = get("return_anno_output_vardict_somatic")
@@ -595,12 +595,19 @@ parse_anno_output <- function(DIR_variant_tables, mode, variant_caller, PATH_sam
 		chip_func = get("return_anno_output_freebayes_chip")
 	} else {
 		stop("Invalid variant caller specified.")}
+	
+	# Determine the file name pattern
+	if (!is.null(keyword_for_input_files) && keyword_for_input_files != "") {
+    	file_pattern <- paste0(".*", keyword_for_input_files, ".*\\.tsv$")
+	} else {
+	    file_pattern <- "\\.tsv$"
+	}
 
 	if (is.null(PATH_sample_list)) {
 		if (mode == "somatic") {
-			anno_df_list <- lapply(as.list(list.files(DIR_variant_tables, full.names = TRUE, pattern = ".tsv$")), somatic_func)
+			anno_df_list <- lapply(as.list(list.files(DIR_variant_tables, full.names = TRUE, pattern = file_pattern)), somatic_func)
 		} else if (mode == "chip") {
-			anno_df_list <- lapply(as.list(list.files(DIR_variant_tables, full.names = TRUE, pattern = ".tsv$")), chip_func)
+			anno_df_list <- lapply(as.list(list.files(DIR_variant_tables, full.names = TRUE, pattern = file_pattern)), chip_func)
 		} 
 	} else {
 		# We subset to a certain group of samples.
@@ -611,7 +618,8 @@ parse_anno_output <- function(DIR_variant_tables, mode, variant_caller, PATH_sam
 		if (length(cf_col) == 0) {
 		  stop("No cfDNA, FiT, or utDNA column found in the sample list.")
 		}
-		samples <- c(sample_df[[cf_col]], sample_df$WBC) %>% unlist() %>% as.character()
+		# samples <- c(sample_df[[cf_col]], sample_df$WBC) %>% unlist() %>% as.character()
+		samples <- unique(as.character(c(sample_df[[cf_col]], sample_df$WBC)))
 		
 		# List files in the directory matching the samples
 		files_to_load <- list.files(DIR_variant_tables, full.names = TRUE, pattern = ".tsv$") # all files in the dir
@@ -649,7 +657,8 @@ return_anno_output_mutect_chip <- function(PATH_variant_table) {
 	print(PATH_variant_table)
 	df <- as.data.frame(read.delim(PATH_variant_table, sep = "\t", stringsAsFactors = FALSE, check.names = FALSE))
 	colnames(df) <- gsub(paste0(file_path_sans_ext(basename(PATH_variant_table)), "."), "", colnames(df)) 
-
+	colnames(df)[grepl("\\.SB", colnames(df))] <- "SB"
+	
 	df <- df %>%
 		separate(col = SB, sep = ",", into = c("Ref_forward", "Ref_reverse", "Alt_forward", "Alt_reverse"), remove = TRUE) %>%
 		select(-EVENTLENGTH) %>% # really didnt need to include this column in the variant tables
@@ -680,7 +689,7 @@ return_anno_output_mutect_somatic <- function(PATH_variant_table) {
 
 	print(PATH_variant_table)
 	df <- as.data.frame(read.delim(PATH_variant_table, stringsAsFactors = FALSE, check.names = FALSE))
-	df$Sample_name_n = str_split(colnames(df)[grep("WBC", colnames(df))][1], "\\.")[[1]][1]
+	df$Sample_name_n = str_split(colnames(df)[grep("gDNA", colnames(df))][1], "\\.")[[1]][1]
 	colnames(df) <- gsub("^.*[_-]WBC[-_].*\\.", "WBC_", colnames(df)) 
 	colnames(df) <- gsub("^.*[_-]gDNA[-_].*\\.", "WBC_", colnames(df)) 
 	colnames(df) <- gsub("^.*[_-]cfDNA[-_].*\\.", "cfDNA_", colnames(df)) 

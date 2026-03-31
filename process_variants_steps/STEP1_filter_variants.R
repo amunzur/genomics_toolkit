@@ -14,6 +14,7 @@ parser$add_argument('--forced_rerun', type = 'character', required = TRUE, help 
 parser$add_argument('--working_dir', type = 'character', required = TRUE, help = 'Working directory where outputs will be saved.')
 parser$add_argument('--exclude_nonpathogenic_germline', action = 'store_true', help = 'Flag to set exclude_nonpathogenic_germline to TRUE if provided.')
 parser$add_argument('--do_not_impose_vaf_upper_limit', action = 'store_true', help = 'Flag to set do_not_impose_vaf_upper_limit to TRUE if provided. Does not filter based on VAF in CH mutation calling.')
+parser$add_argument('--keyword_for_input_files', type = 'character', required = FALSE, help = 'Only process the files that contain this string.')
 parser$add_argument('--keyword_for_output_files', type = 'character', required = FALSE, help = 'Output files will have this keyword if provided by user.')
 parser$add_argument('--PATH_sample_list', type = 'character', required = FALSE, help = 'Paired WBC cfDNA samples list, tab delim file. Each row has one sample pair.')
 parser$add_argument('--PATH_bg', type = 'character', required = FALSE, help = 'CH background error rate file.')
@@ -26,6 +27,13 @@ if (is.null(args$consensus)) {
   consensus <- ""
 } else {
   consensus <- args$consensus
+}
+
+# Handle optional 'keyword_for_input_files' argument with fallback
+if (is.null(args$keyword_for_input_files)) {
+  keyword_for_input_files <- ""
+} else {
+  keyword_for_input_files <- args$keyword_for_input_files
 }
 
 variant_caller <- args$caller
@@ -179,8 +187,9 @@ if (!dir.exists(sprintf("variant_calling/%s/finalized/%s", variant_caller, conse
 }
 
 if (toupper(type) == "CHIP"){
-	if (forced_rerun || !file.exists(PATH_before_filtering)) {
-		vars <- parse_anno_output(DIR_variant_tables_chip, "chip", variant_caller, PATH_sample_list = PATH_sample_list)
+	# if (forced_rerun || !file.exists(PATH_before_filtering)) {
+	if (forced_rerun || !file.exists(PATH_before_filtering) || grepl("WBC", PATH_before_filtering)) {
+		vars <- parse_anno_output(DIR_variant_tables_chip, "chip", variant_caller, PATH_sample_list = PATH_sample_list, keyword_for_input_files=keyword_for_input_files)
 		# vars <- add_patient_information(vars, PATH_sample_information)
 		vars <- add_bg_error_rate(vars, bg)
 		vars <- add_AAchange_effect(vars, variant_caller)
@@ -191,7 +200,7 @@ if (toupper(type) == "CHIP"){
 		# vars <- evaluate_strand_bias2(vars)
 		# write_csv(vars, PATH_before_filtering)
 	}
-	vars <- filter_variants_chip_or_germline("chip", vars, min_alt_reads_n, min_alt_reads_t, min_depth, min_VAF_low, max_VAF_low, min_VAF_high, max_VAF_high, min_VAF_bg_ratio, PATH_blacklist, blacklist = TRUE, filter_by_min_depth = FALSE)
+	vars <- filter_variants_chip_or_germline("chip", vars, min_alt_reads_n, min_alt_reads_t, min_depth, min_VAF_low, max_VAF_low, min_VAF_high, max_VAF_high, min_VAF_bg_ratio, PATH_blacklist, blacklist = FALSE, filter_by_min_depth = FALSE)
 	# vars <- add_N_fraction(vars, DIR_mpileup, DIR_mpileup_filtered_chip, force = FALSE)
 	vars$Variant_caller <- variant_caller
 	write_csv(vars, PATH_after_filtering)
@@ -208,7 +217,7 @@ if (toupper(type) == "CHIP"){
 
 } else if (toupper(type) == "SOMATIC") {
 	if (forced_rerun || !file.exists(PATH_before_filtering_somatic)) {
-		vars <- parse_anno_output(DIR_variant_tables_somatic, "somatic", variant_caller, PATH_sample_list = PATH_sample_list)
+		vars <- parse_anno_output(DIR_variant_tables_somatic, "somatic", variant_caller, PATH_sample_list = PATH_sample_list, keyword_for_input_files=keyword_for_input_files)
 		# vars <- add_patient_information_somatic(vars, PATH_sample_information)
 		vars <- add_bg_error_rate(vars, bg)
 		vars <- add_AAchange_effect(vars, variant_caller)
@@ -219,7 +228,7 @@ if (toupper(type) == "CHIP"){
 		# write_csv(vars, PATH_before_filtering_somatic)
 	}
 	vars <- evaluate_strand_bias2(vars)
-	vars <- filter_somatic_variants(vars, min_alt_reads_t, max_alt_reads_n, min_depth_n, min_VAF_low_somatic, min_tumor_to_normal_vaf_ratio, min_VAF_bg_ratio, PATH_blacklist, blacklist = TRUE)
+	vars <- filter_somatic_variants(vars, min_alt_reads_t, max_alt_reads_n, min_depth_n, min_VAF_low_somatic, min_tumor_to_normal_vaf_ratio, min_VAF_bg_ratio, PATH_blacklist, blacklist = FALSE)
 	table(vars$Gene)
 	# vars <- add_N_fraction(vars, DIR_mpileup, DIR_mpileup_filtered_somatic, force = FALSE)
 	vars$Variant_caller <- variant_caller
