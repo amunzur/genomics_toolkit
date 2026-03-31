@@ -32,19 +32,19 @@ Requirements:
 Example Usage:
 # with all arguments
 python /groups/wyattgrp/users/amunzur/toolkit/visualization/plot_gene_violins.py \
-    --seq_stats_tsv /groups/wyattgrp/users/jbacon/CGL_work/CGL_CNV_candidates/seq_metrics/seq_stats.tsv \
-    --cnr_dir /groups/wyattgrp/users/jbacon/CGL_work/CGL_CNV_candidates/copynum/fix/genes/ \
-    --var_dir /groups/wyattgrp/users/jbacon/CGL_work/CGL_CNV_candidates/mutations/mut_somatic/tables/ \
-    --gene_list /groups/wyattgrp/users/jbacon/reference/panel_genelists/73gp.txt \
-    --plot_output_dir /groups/wyattgrp/users/zshong/codebook/copynum_violin/ordered \
-    --tsv_dataout_dir /groups/wyattgrp/users/zshong/codebook/copynum_violin/ordered
+    --seq_stats_tsv /path/to/seq_stats.tsv \
+    --cnr_dir /path/to/copynum/fix/genes/ \
+    --var_dir /path/to/mut_somatic/tables/ \
+    --gene_list /path/to/gene_list.txt \
+    --plot_output_dir /path/to/copynum_violin/ordered \
+    --tsv_dataout_dir /path/to/copynum_violin/ordered
 
 # without optional arguments
 python /groups/wyattgrp/users/amunzur/toolkit/visualization/plot_gene_violins.py \
-    --cnr_dir /groups/wyattgrp/users/jbacon/CGL_work/CGL_CNV_candidates/copynum/fix/genes/ \
-    --var_dir /groups/wyattgrp/users/jbacon/CGL_work/CGL_CNV_candidates/mutations/mut_somatic/tables/ \
-    --plot_output_dir /groups/wyattgrp/users/zshong/codebook/copynum_violin/ \
-    --tsv_dataout_dir /groups/wyattgrp/users/zshong/codebook/copynum_violin/
+    --cnr_dir /path/to/copynum/fix/genes/ \
+    --var_dir /path/to/mut_somatic/tables/ \
+    --plot_output_dir /path/to/copynum_violin/ \
+    --tsv_dataout_dir /path/to/copynum_violin/
 """
 import pandas as pd
 import matplotlib.pyplot as plt
