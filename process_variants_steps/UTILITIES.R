@@ -604,10 +604,16 @@ parse_anno_output <- function(DIR_variant_tables, mode, variant_caller, PATH_sam
 	}
 
 	if (is.null(PATH_sample_list)) {
+		files_list=as.list(list.files(DIR_variant_tables, full.names = TRUE, pattern = file_pattern, ignore.case = TRUE))
+		print(file_pattern)
+		if (length(files_list) == 0) {
+		  stop("No files found to load")
+		}
+		
 		if (mode == "somatic") {
-			anno_df_list <- lapply(as.list(list.files(DIR_variant_tables, full.names = TRUE, pattern = file_pattern)), somatic_func)
+			anno_df_list <- lapply(files_list, somatic_func)
 		} else if (mode == "chip") {
-			anno_df_list <- lapply(as.list(list.files(DIR_variant_tables, full.names = TRUE, pattern = file_pattern)), chip_func)
+			anno_df_list <- lapply(files_list, chip_func)
 		} 
 	} else {
 		# We subset to a certain group of samples.
@@ -622,7 +628,7 @@ parse_anno_output <- function(DIR_variant_tables, mode, variant_caller, PATH_sam
 		samples <- unique(as.character(c(sample_df[[cf_col]], sample_df$WBC)))
 		
 		# List files in the directory matching the samples
-		files_to_load <- list.files(DIR_variant_tables, full.names = TRUE, pattern = ".tsv$") # all files in the dir
+		files_to_load <- list.files(DIR_variant_tables, full.names = TRUE, pattern = file_pattern) # all files in the dir
 		if (length(files_to_load) == 0) {
   			stop("No variant table files found in the directory matching the samples!")
 		}
@@ -638,6 +644,7 @@ parse_anno_output <- function(DIR_variant_tables, mode, variant_caller, PATH_sam
 	anno_df <- as.data.frame(do.call(rbind, anno_df_list))
 	
 	# Add the patient ID
+	
 	if ("Sample_name" %in% colnames(anno_df)) {
 		x <- str_split(anno_df$Sample_name, "_gDNA|_WBC|_cfDNA|_utDNA")
 	} else {
